@@ -28,12 +28,12 @@ from io import BytesIO
 import base64
 
 ######### PATHS
-defoe_path="/Users/rf208/Research/NLS-Fellowship/work/defoe"
-input_path_sum="/Users/rf208/Research/eScience2022/frances/web-app/query_app/models"
+defoe_path="/../../defoe"
+input_path_sum="./models"
 
 ####### MODELS
-text_embeddings = np.load('/Users/rf208/Research/eScience2022/frances/web-app/models/embeddings_mpnet.npy')
-topic_model = BERTopic.load('/Users/rf208/Research/eScience2022/frances/web-app/models/BerTopic_Model_mpnet') 
+text_embeddings = np.load('./models/embeddings_mpnet.npy')
+topic_model = BERTopic.load('./models/BerTopic_Model_mpnet') 
 model = SentenceTransformer('all-mpnet-base-v2')
 
 ######### TERMS INFO
