@@ -3,7 +3,6 @@ from .flask_app import app
 import requests
 import traceback
 from .sparql_queries import *
-from flask_paginate import Pagination, get_page_parameter
 import itertools
 from itertools import islice
 from sklearn.metrics.pairwise import cosine_similarity
@@ -26,6 +25,8 @@ from werkzeug.datastructures import  FileStorage
 
 from io import BytesIO
 import base64
+
+from .api import Pagination, TermSearchResponse
 
 ######### PATHS
 defoe_path="/../../defoe"
@@ -62,18 +63,18 @@ clean_documents=load_data(input_path_sum, 'clean_terms_definitions_final.txt')
 
 ######
 
-@app.route("/term_search/<string:termlink>",  methods=['GET', 'POST'])
-@app.route("/term_search",  methods=['GET', 'POST'])
+@app.route("/term_search/<string:termlink>",  methods=['GET'])
+@app.route("/term_search",  methods=['GET'])
 def term_search(termlink=None):
     
     headers=["Year", "Edition", "Volume", "Start Page", "End Page", "Term Type", "Definition/Summary", "Related Terms", "Topic Modelling", "Sentiment_Score", "Advanced Options"]
-    if request.method == "POST":
-        if "search" in request.form:
-            term = request.form["search"]
-        if not term:
-            term = "AABAM"
-        term=term.upper()
-        session['term'] = term
+    # if request.method == "POST":
+    #     if "search" in request.form:
+    #         term = request.form["search"]
+    #     if not term:
+    #         term = "AABAM"
+    #     term=term.upper()
+    #     session['term'] = term
     
     if termlink!=None:
         term = termlink
@@ -125,10 +126,18 @@ def term_search(termlink=None):
     limit = offset+per_page
     results_for_render=dict(islice(results.items(),offset, limit))
     pagination = Pagination(page=page, total=len(results), per_page=page_size, search=False)
-    return render_template("results.html", results=results_for_render,
-                                           pagination = pagination, 
-                                           headers=headers,
-                                           term=term, bar_plot=bar_plot, heatmap_plot=heatmap_plot)
+    
+    return TermSearchResponse(
+      results=results_for_render,
+      pagination = pagination,
+      headers=headers,
+      term=term,
+      bar_plot=bar_plot
+    ).encode()
+    # return render_template("results.html", results=results_for_render,
+    #                                        pagination = pagination, 
+    #                                        headers=headers,
+    #                                        term=term, bar_plot=bar_plot, heatmap_plot=heatmap_plot)
        
 
 @app.route("/eb_details",  methods=['GET', 'POST'])
