@@ -62,10 +62,6 @@ clean_documents=load_data(input_path_sum, 'clean_terms_definitions_final.txt')
 
 ######
 
-@app.route("/", methods=["GET"])
-def home_page():
-    return render_template('home.html')
-
 @app.route("/term_search/<string:termlink>",  methods=['GET', 'POST'])
 @app.route("/term_search",  methods=['GET', 'POST'])
 def term_search(termlink=None):
