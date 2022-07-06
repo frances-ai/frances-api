@@ -138,7 +138,7 @@ def term_search(termlink=None):
     #                                        pagination = pagination, 
     #                                        headers=headers,
     #                                        term=term, bar_plot=bar_plot, heatmap_plot=heatmap_plot)
-       
+
 
 @app.route("/eb_details",  methods=['GET', 'POST'])
 def eb_details():
@@ -159,9 +159,6 @@ def eb_details():
             return render_template('eb_details.html', edList=edList)
     return render_template('eb_details.html', edList=edList)
 
-   
-
- 
 
 @app.route("/vol_details", methods=['GET', 'POST'])
 def vol_details():
@@ -174,7 +171,6 @@ def vol_details():
             outputObj = { 'id':key , 'name': value }
             OutputArray.append(outputObj)
     return jsonify(OutputArray)
-
 
 
 @app.route("/visualization_resources", methods=['GET', 'POST'])
@@ -199,11 +195,6 @@ def visualization_resources(termlink=None, termtype=None):
             return render_template('visualization_resources.html', g_results=g_results, uri=uri)
         else:
             return render_template('visualization_resources.html')
-
-
-@app.route("/similar", methods=["GET"])
-def similar():
-    return render_template('similar.html')
 
 
 @app.route("/similar_terms", methods=["GET", "POST"])
