@@ -1,0 +1,11 @@
+User profile
+---
+tags:
+  - Authentication
+security:
+  - Bearer: ['Authorization']
+
+responses:
+  200:
+    description: User info
+

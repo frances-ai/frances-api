@@ -25,7 +25,6 @@ NAMESPACES = dict(
 # URLs from which to download RDF data.
 RDF_URLS = []
 
-
 PARSERS = {
     ".rdf": "xml",
     ".n3": "n3",
@@ -33,10 +32,23 @@ PARSERS = {
     ".xml": "xml",
 }
 
-UPLOAD_FOLDER="/Users/damonyu/Documents/CS5098/frances-api/web-app/query_app/upload_folder"
+UPLOAD_FOLDER = "/Users/damonyu/Documents/CS5098/frances-api/web-app/query_app/upload_folder"
 
-CONFIG_FOLDER="/Users/damonyu/Documents/CS5098/frances-api/web-app/query_app/config_folder"
+CONFIG_FOLDER = "/Users/damonyu/Documents/CS5098/frances-api/web-app/query_app/config_folder"
 
-RESULTS_FOLDER="/Users/damonyu/Documents/CS5098/frances-api/web-app/query_app/defoe_results"
+RESULTS_FOLDER = "/Users/damonyu/Documents/CS5098/frances-api/web-app/query_app/defoe_results"
 
 ALLOWED_EXTENSIONS = {'txt', 'yaml', 'yml'}
+
+# Database
+SQLALCHEMY_DATABASE_URI = 'postgresql://frances:frances@localhost:5432/frances'
+SQLALCHEMY_TRACK_MODIFICATIONS = False
+
+# JWT Authentication
+JWT_SECRET_KEY = 'JWT_SECRET_KEY'
+
+# OpenAPI
+SWAGGER = {
+    'title': "frances API",
+    'uiversion': 3
+}

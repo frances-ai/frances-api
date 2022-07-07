@@ -1,0 +1,28 @@
+User login
+---
+tags:
+  - Authentication
+parameters:
+  - name: login body
+    description: User should login with email and password
+    in: body
+    required: true
+    schema:
+      type: object
+      required:
+        - email
+        - password
+      properties:
+        email:
+          type: string
+          example: damonyu@gmail.com
+        password:
+          type: string
+          format: password
+          example: damon97
+
+responses:
+  200:
+    description: Access token and refresh token, and user info
+
+
