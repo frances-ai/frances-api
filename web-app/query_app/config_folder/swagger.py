@@ -10,7 +10,8 @@ template = {
         "Bearer": {
             "type": "apiKey",
             "name": "Authorization",
-            "in": "header"
+            "in": "header",
+            "description": "Example: Bearer {token}"
         }
     }
 }
