@@ -1,5 +1,6 @@
 import os
 from pathlib import Path
+from datetime import timedelta
 
 from rdflib.namespace import Namespace, RDF, RDFS, OWL, XSD
 from rdflib.namespace import SKOS, DOAP, FOAF, DC, DCTERMS
@@ -62,7 +63,7 @@ JWT_COOKIE_SECURE = False
 # cookie to the access endpoints, and only sending your refresh token
 # to the refresh endpoint.
 JWT_ACCESS_COOKIE_PATH = '/api/'
-JWT_REFRESH_COOKIE_PATH = '/token/refresh'
+JWT_REFRESH_COOKIE_PATH = '/api/v1/auth/token/refresh'
 
 # Enable csrf double submit protection. See this for a thorough
 # explanation: http://www.redotheweb.com/2015/11/09/api-security.html
@@ -70,3 +71,7 @@ JWT_COOKIE_CSRF_PROTECT = False
 
 # JWT Authentication
 JWT_SECRET_KEY = 'JWT_SECRET_KEY'
+
+# Make access token lives short while refresh token lives long
+JWT_ACCESS_TOKEN_EXPIRES = timedelta(minutes=15)
+JWT_REFRESH_TOKEN_EXPIRES = timedelta(days=7)
