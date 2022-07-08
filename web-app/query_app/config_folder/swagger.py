@@ -6,14 +6,16 @@ template = {
         "version": "1.0"
     },
     "basePath": "/api/v1",
-    "securityDefinitions": {
-        "Bearer": {
-            "type": "apiKey",
-            "name": "Authorization",
-            "in": "header",
-            "description": "Example: Bearer {token}"
-        }
-    }
+
+    # Uncomment following lines if explict header authorization is required
+    # "securityDefinitions": {
+    #    "Bearer": {
+    #        "type": "apiKey",
+    #        "name": "Authorization",
+    #        "in": "header",
+    #        "description": "Example: Bearer {token}"
+    #    }
+    # }
 }
 
 swagger_config = {

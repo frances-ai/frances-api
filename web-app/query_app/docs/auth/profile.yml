@@ -2,8 +2,6 @@ User profile
 ---
 tags:
   - Authentication
-security:
-  - Bearer: ['Authorization']
 
 responses:
   200:
