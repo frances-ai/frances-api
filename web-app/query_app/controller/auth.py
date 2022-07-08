@@ -5,6 +5,7 @@ import validators
 from flask_jwt_extended import create_access_token, create_refresh_token, jwt_required, get_jwt_identity, \
     set_access_cookies, set_refresh_cookies, unset_jwt_cookies
 from werkzeug.security import generate_password_hash, check_password_hash
+
 from ..db import User, db
 
 auth = Blueprint("auth", __name__, url_prefix="/api/v1/auth")
@@ -20,7 +21,7 @@ def validate_register_info(name, email, password):
     if not validators.email(email):
         raise Exception('Email is not valid')
 
-    if User.query.filter_by(email=email).first() is not None:
+    if db.get_user_by_email(email) is not None:
         raise Exception('Email has been registered')
 
 
@@ -41,9 +42,8 @@ def register():
     # encode password
     pwd_hash = generate_password_hash(password)
 
-    user = User(name=name, password=pwd_hash, email=email)
-    db.session.add(user)
-    db.session.commit()
+    user = User.create_new(name=name, password=pwd_hash, email=email)
+    db.add_user(user)
 
     return jsonify({
         "message": "User created",
@@ -60,7 +60,7 @@ def login():
     email = request.json.get('email', '')
     password = request.json.get('password', '')
 
-    user = User.query.filter_by(email=email).first()
+    user = db.get_user_by_email(email)
 
     if user:
         pwd_correct = check_password_hash(user.password, password)
@@ -112,7 +112,7 @@ def refresh_token():
 @swag_from("../docs/auth/profile.yml")
 def profile():
     user_id = get_jwt_identity()
-    user = User.query.filter_by(id=user_id).first()
+    user = db.get_user_by_id(user_id)
     return jsonify({
         "user": {
             "name:": user.name,

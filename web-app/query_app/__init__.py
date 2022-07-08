@@ -8,7 +8,6 @@ from flask_jwt_extended import JWTManager
 
 from .config_folder.swagger import swagger_config, template
 from .controller.auth import auth
-from .db import db
 
 
 def create_app(test_config=None):
@@ -20,11 +19,6 @@ def create_app(test_config=None):
 
     # Set up openapi
     Swagger(app, config=swagger_config, template=template)
-
-    # Set up database
-    db.app = app
-    db.init_app(app)
-    db.create_all()
 
     # Use JWT authentication
     JWTManager(app)
