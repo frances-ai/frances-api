@@ -2,7 +2,8 @@ from flasgger import swag_from
 from flask import Blueprint, request, jsonify
 from http import HTTPStatus
 import validators
-from flask_jwt_extended import create_access_token, create_refresh_token, jwt_required, get_jwt_identity
+from flask_jwt_extended import create_access_token, create_refresh_token, jwt_required, get_jwt_identity, \
+    set_access_cookies, set_refresh_cookies, unset_jwt_cookies
 from werkzeug.security import generate_password_hash, check_password_hash
 from ..db import User, db
 
@@ -65,21 +66,44 @@ def login():
         pwd_correct = check_password_hash(user.password, password)
 
         if pwd_correct:
-            access = create_access_token(identity=user.id)
-            refresh = create_refresh_token(identity=user.id)
+            access_token = create_access_token(identity=user.id)
+            refresh_token = create_refresh_token(identity=user.id)
 
-            return jsonify({
+            response = jsonify({
                 "user": {
-                    "access": access,
-                    "refresh": refresh,
-                    "username": user.name,
+                    "name": user.name,
                     "email": user.email
                 }
             })
 
+            set_access_cookies(response, access_token)
+            set_refresh_cookies(response, refresh_token)
+
+            return response, HTTPStatus.OK
+
     return jsonify({
         "error": "wrong credential"
+    }), HTTPStatus.UNAUTHORIZED
+
+
+@auth.post('logout')
+@swag_from("../docs/auth/logout.yml")
+def logout():
+    response = jsonify({'logout': True})
+    unset_jwt_cookies(response)
+    return response, HTTPStatus.OK
+
+
+@auth.post("/token/refresh")
+@jwt_required(refresh=True)
+def refresh_token():
+    user_id = get_jwt_identity()
+    access_token = create_access_token(identity=user_id)
+    response = jsonify({
+        "refresh": True
     })
+    set_access_cookies(response, access_token)
+    return response, HTTPStatus.OK
 
 
 @auth.get("/profile")
