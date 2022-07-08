@@ -1,0 +1,8 @@
+User access token refresh
+---
+tags:
+  - Authentication
+
+responses:
+  200:
+    description: set new access token to cookie

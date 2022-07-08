@@ -96,6 +96,7 @@ def logout():
 
 @auth.post("/token/refresh")
 @jwt_required(refresh=True)
+@swag_from("../docs/auth/refresh.yml")
 def refresh_token():
     user_id = get_jwt_identity()
     access_token = create_access_token(identity=user_id)
