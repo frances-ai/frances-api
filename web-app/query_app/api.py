@@ -30,6 +30,25 @@ class TermSearchResponse(Response):
   headers: dict
   term: str
   # bar_plot: str
+  # heatmap_plot: str
+
+
+@dataclass
+class DetailsResponse(Response):
+  details: dict
+  
+
+@dataclass
+class VisualizationResponse(Response):
+  results: dict
+  uri: str
+
+
+@dataclass
+class SpellCheckResponse(Response):
+  results: dict
+  definition: str
+  clean_definition: str
 
 
 class ResponseEncoder(JSONEncoder):

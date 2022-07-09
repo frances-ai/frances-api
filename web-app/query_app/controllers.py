@@ -131,13 +131,10 @@ def term_search(termlink=None):
       results=results_for_render,
       pagination = pagination,
       headers=headers,
-      term=term,
-      bar_plot=bar_plot
+      term=term
+      # bar_plot=bar_plot,
+      # heatmap_plot=heatmap_plot,
     ).encode()
-    # return render_template("results.html", results=results_for_render,
-    #                                        pagination = pagination, 
-    #                                        headers=headers,
-    #                                        term=term, bar_plot=bar_plot, heatmap_plot=heatmap_plot)
 
 
 @app.route("/eb_details",  methods=['GET', 'POST'])
