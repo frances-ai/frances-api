@@ -29,11 +29,11 @@ import base64
 
 ######### PATHS
 defoe_path="/Users/rf208/Research/NLS-Fellowship/work/defoe"
-input_path_sum="/Users/rf208/Research/eScience2022/frances/web-app/query_app/models"
+input_path_sum="/Users/damonyu/Documents/CS5098/frances-api/web-app/models"
 
 ####### MODELS
-text_embeddings = np.load('/Users/rf208/Research/eScience2022/frances/web-app/models/embeddings_mpnet.npy')
-topic_model = BERTopic.load('/Users/rf208/Research/eScience2022/frances/web-app/models/BerTopic_Model_mpnet') 
+text_embeddings = np.load('/Users/damonyu/Documents/CS5098/frances-api/web-app/models/embeddings_mpnet.npy')
+topic_model = BERTopic.load('/Users/damonyu/Documents/CS5098/frances-api/web-app/models/BerTopic_Model_mpnet')
 model = SentenceTransformer('all-mpnet-base-v2')
 
 ######### TERMS INFO
@@ -57,7 +57,7 @@ t_names=load_data(input_path_sum, 'lda_t_names_mpnet.txt')
 topics_names=load_data(input_path_sum, 'lda_topics_names_mpnet.txt')
 
 ######### SENTIMENT AND CLEAN TERMS
-sentiment_terms=load_data(input_path_sum,'terms_sentiments.txt') 
+sentiment_terms=load_data(input_path_sum,'terms_sentiments.txt')
 clean_documents=load_data(input_path_sum, 'clean_terms_definitions_final.txt')
 
 ######
@@ -69,7 +69,7 @@ def home_page():
 @app.route("/term_search/<string:termlink>",  methods=['GET', 'POST'])
 @app.route("/term_search",  methods=['GET', 'POST'])
 def term_search(termlink=None):
-    
+
     headers=["Year", "Edition", "Volume", "Start Page", "End Page", "Term Type", "Definition/Summary", "Related Terms", "Topic Modelling", "Sentiment_Score", "Advanced Options"]
     if request.method == "POST":
         if "search" in request.form:
@@ -78,7 +78,7 @@ def term_search(termlink=None):
             term = "AABAM"
         term=term.upper()
         session['term'] = term
-    
+
     if termlink!=None:
         term = termlink
         session['term'] = term
@@ -113,7 +113,7 @@ def term_search(termlink=None):
              pass
     if len(topics_vis) >= 1:
         fig1=topic_model.visualize_barchart(topics_vis, n_words=10)
-        bar_plot = fig1.to_json() 
+        bar_plot = fig1.to_json()
     else:
         bar_plot=None
     if len(topics_vis) >= 2:
@@ -121,7 +121,7 @@ def term_search(termlink=None):
         heatmap_plot = fig2.to_json()
     else:
         heatmap_plot=None
- 
+
     page = int(request.args.get("page", 1))
     page_size=2
     per_page = 2
@@ -130,10 +130,10 @@ def term_search(termlink=None):
     results_for_render=dict(islice(results.items(),offset, limit))
     pagination = Pagination(page=page, total=len(results), per_page=page_size, search=False)
     return render_template("results.html", results=results_for_render,
-                                           pagination = pagination, 
+                                           pagination = pagination,
                                            headers=headers,
                                            term=term, bar_plot=bar_plot, heatmap_plot=heatmap_plot)
-       
+
 
 @app.route("/eb_details",  methods=['GET', 'POST'])
 def eb_details():
@@ -154,9 +154,9 @@ def eb_details():
             return render_template('eb_details.html', edList=edList)
     return render_template('eb_details.html', edList=edList)
 
-   
 
- 
+
+
 
 @app.route("/vol_details", methods=['GET', 'POST'])
 def vol_details():
@@ -234,13 +234,13 @@ def similar_terms(termlink=None):
         session["data_similar"] = data_similar
 
     if not uri:
-        uri=session.get('uri')      
+        uri=session.get('uri')
         uri_raw=session.get('uri_raw')
         data_similar = session.get('data_similar')
-      
+
     if "free_search" in uri_raw:
         results, topics_vis=calculating_similarity_text(data_similar,text_embeddings, model, terms_info, documents,uris, topics_names,topics, sentiment_terms, -1)
-              
+
     else:
         term, definition, enum, year, vnum  =get_document(uri)
         index_uri=uris.index(uri_raw)
@@ -310,8 +310,8 @@ def similar_terms(termlink=None):
         heatmap_plot = fig2.to_json()
     else:
         heatmap_plot=None
-             
-    #### Pagination ###  
+
+    #### Pagination ###
     page = int(request.args.get("page", 1))
     page_size=10
     per_page = 10
@@ -319,16 +319,16 @@ def similar_terms(termlink=None):
     limit = offset+per_page
     results_for_render=dict(islice(results.items(),offset, limit))
     pagination = Pagination(page=page, total=len(results), per_page=page_size, search=False)
-    ##############  
+    ##############
     if "free_search" in uri_raw:
         return render_template('results_similar.html',  results=results_for_render, pagination=pagination,
                                 bar_plot=bar_plot, heatmap_plot=heatmap_plot)
     else:
-        return render_template('results_similar.html', results=results_for_render, pagination=pagination, 
-                                term=term, definition=definition, uri=uri_raw, 
-                                enum=enum, year=year, vnum=vnum, t_name=t_name, 
+        return render_template('results_similar.html', results=results_for_render, pagination=pagination,
+                                term=term, definition=definition, uri=uri_raw,
+                                enum=enum, year=year, vnum=vnum, t_name=t_name,
                                 bar_plot=bar_plot, heatmap_plot=heatmap_plot, t_sentiment=t_sentiment)
-    
+
 
 @app.route("/topic_modelling", methods=["GET", "POST"])
 def topic_modelling(topic_name=None):
@@ -374,7 +374,7 @@ def topic_modelling(topic_name=None):
     fig1=topic_model.visualize_barchart([first_topic], n_words=10)
     bar_plot = fig1.to_json()
 
-    #### Pagination ###  
+    #### Pagination ###
     page = int(request.args.get("page", 1))
     page_size=10
     per_page = 10
@@ -382,11 +382,11 @@ def topic_modelling(topic_name=None):
     limit = offset+per_page
     results_for_render=dict(islice(results.items(),offset, limit))
     pagination = Pagination(page=page, total=len(results), per_page=page_size, search=False)
-    ##############  
-    return render_template('topic_modelling.html', topic_name=topic_name, 
-                                    results=results_for_render, pagination=pagination, 
-                                    bar_plot=bar_plot, num_results=num_results, num_topics=num_topics) 
-            
+    ##############
+    return render_template('topic_modelling.html', topic_name=topic_name,
+                                    results=results_for_render, pagination=pagination,
+                                    bar_plot=bar_plot, num_results=num_results, num_topics=num_topics)
+
 
 @app.route("/spelling_checker", methods=["GET", "POST"])
 def spelling_checker(termlink=None):
@@ -508,7 +508,7 @@ def evolution_of_terms(termlink=None):
     results_dic_sorted={}
     for r in results_sorted:
         results_dic_sorted[r[0]]=r[1:]
-     
+
     if len(topics_vis) >= 1:
         fig1=topic_model.visualize_barchart(topics_vis, n_words=10)
         bar_plot = fig1.to_json()
@@ -519,54 +519,54 @@ def evolution_of_terms(termlink=None):
         heatmap_plot = fig2.to_json()
     else:
         heatmap_plot=None
-             
-    return render_template('evolution_of_terms.html', results=results_dic_sorted, 
-                                term=term, definition=definition, uri=uri_raw, 
-                                enum=enum, year=year, vnum=vnum, t_name=t_name, 
+
+    return render_template('evolution_of_terms.html', results=results_dic_sorted,
+                                term=term, definition=definition, uri=uri_raw,
+                                enum=enum, year=year, vnum=vnum, t_name=t_name,
                                 bar_plot=bar_plot, heatmap_plot=heatmap_plot, t_sentiment=t_sentiment)
-    
+
 
 @app.route("/defoe_queries", methods=["GET", "POST"])
 def defoe_queries():
     defoe_q=dict_defoe_queries()
 
     if request.method == "POST":
-        
+
         config={}
         defoe_selection=request.form.get('defoe_selection')
-        print("defoe_selection is %s" %defoe_selection) 
+        print("defoe_selection is %s" %defoe_selection)
         config["preprocess"]=request.form.get('preprocess')
         config["target_sentences"]= request.form.get('target_sentences').split(",")
         config["target_filter"] = request.form.get('target_filter')
-        config["window"] = request.form.get('window') 
+        config["window"] = request.form.get('window')
         config["defoe_path"]= "/Users/rf208/Research/NLS-Fellowship/work/defoe/"
         config["start_year"]= request.form.get('start_year')
         config["end_year"]= request.form.get('end_year')
         config["os_type"]="os"
         config["hit_count"] = request.form.get('hit_count')
-       
-        if "normalized" not in defoe_selection: 
+
+        if "normalized" not in defoe_selection:
             file= request.files['file']
             filename = secure_filename(file.filename)
             file.save(os.path.join(app.config['UPLOAD_FOLDER'], filename))
-            config["data"]=os.path.join(app.config['UPLOAD_FOLDER'], filename)       
-       
-        
-        
+            config["data"]=os.path.join(app.config['UPLOAD_FOLDER'], filename)
+
+
+
         config_file=os.path.join(app.config['CONFIG_FOLDER'], "config_frances_web.yml")
         with open(config_file, 'w') as outfile:
             yaml.dump(config, outfile, default_flow_style=False)
-        
+
         results_file=os.path.join(app.config['RESULTS_FOLDER'], defoe_selection+".yml")
-       
-        if "normalized" not in defoe_selection: 
+
+        if "normalized" not in defoe_selection:
             print("spark-submit")
             cwd = os.getcwd()
             os.chdir(defoe_path)
             cmd="spark-submit --driver-memory 12g --py-files defoe.zip defoe/run_query.py sparql_data.txt sparql defoe.sparql.queries."+ defoe_selection+" "+ config_file  +" -r " + results_file +" -n 34"
             #os.system(cmd)
             os.chdir(cwd)
-        
+
         print("finished with apache sark submission, results in -- %s" % results_file)
         results=read_results(results_file)
 
@@ -578,7 +578,7 @@ def defoe_queries():
             config_defoe["target_filter"] = config["target_filter"]
             config_defoe["start_year"]= config["start_year"]
             config_defoe["end_year"]= config["end_year"]
-            if "snippet" in defoe_selection: 
+            if "snippet" in defoe_selection:
                 config_defoe["window"] = config["window"]
         elif "frequency" in defoe_selection:
             config_defoe["preprocess"]= config["preprocess"]
@@ -587,8 +587,8 @@ def defoe_queries():
             config_defoe["start_year"]= config["start_year"]
             config_defoe["end_year"]= config["end_year"]
             config_defoe["hit_count"] = config["hit_count"]
- 
- 
+
+
 
         if "terms" in defoe_selection:
             results_uris=results["terms_uris"]
@@ -615,7 +615,7 @@ def defoe_queries():
             ####
             print("Sending results")
             return render_template('defoe_results.html', defoe_q=defoe_q, flag=1, results=results, defoe_selection=defoe_selection, line_f_plot=line_f_plot, line_n_f_plot=line_n_f_plot, config=config_defoe)
-        
+
     return render_template('defoe.html', defoe_q=defoe_q)
 
 @app.route("/download", methods=['GET'])
@@ -636,11 +636,11 @@ def visualize_freq(defoe_selection=None):
     defoe_selection = request.args.get('defoe_selection', None)
     lexicon_file = request.args.get('lexicon_file', None)
     results_file=os.path.join(app.config['RESULTS_FOLDER'], defoe_selection+".yml")
-    
+
     preprocess= request.args.get('preprocess', None)
     p_lexicon = preprocess_lexicon(lexicon_file, preprocess)
     defoe_q=dict_defoe_queries()
-    
+
     #### Read Results File
     results=read_results(results_file)
 

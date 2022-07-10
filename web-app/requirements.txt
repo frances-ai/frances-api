@@ -1,5 +1,5 @@
 flask_bootstrap
-rdflib 
+rdflib
 flask_paginate
 SPARQLWrapper
 lxml
@@ -20,3 +20,9 @@ plotly
 numba
 networkx
 pyyaml
+flask-jwt-extended
+flasgger
+flask_sqlalchemy
+sqlalchemy
+psycopg2
+validators

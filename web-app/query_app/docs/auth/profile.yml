@@ -1,0 +1,9 @@
+User profile
+---
+tags:
+  - Authentication
+
+responses:
+  200:
+    description: User info
+

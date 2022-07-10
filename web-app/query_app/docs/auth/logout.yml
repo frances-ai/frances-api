@@ -1,0 +1,10 @@
+User logout
+---
+tags:
+  - Authentication
+
+responses:
+  200:
+    description: unset jwt token cookies
+
+

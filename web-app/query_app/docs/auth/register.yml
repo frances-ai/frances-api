@@ -1,0 +1,36 @@
+User register
+---
+tags:
+  - Authentication
+parameters:
+  - name: register body
+    description: User should regitser with email, name and password
+    in: body
+    required: true
+    schema:
+      type: object
+      required:
+        - email
+        - name
+        - password
+      properties:
+        email:
+          type: string
+          example: damonyu@gmail.com
+        name:
+          type: string
+          example: Damon Yu
+        password:
+          type: string
+          format: password
+          example: damon97
+
+
+responses:
+  201:
+    description: User info
+
+  400:
+    description: Invalid input
+
+
