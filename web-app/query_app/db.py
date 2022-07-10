@@ -3,8 +3,13 @@ import psycopg2.extras
 
 import time
 import uuid
+from pathlib import Path
 
-tables_file_path = "./db/tables.sql"
+# Find path to web-app, which is the base directory.
+base_path = Path(__file__).parent.parent
+# Find path for sql script file for tables creation.
+tables_file_path = base_path.joinpath("db/tables.sql")
+
 namespace = "github.com/frances-ai/frances-api"
 
 psycopg2.extras.register_uuid()
