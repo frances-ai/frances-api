@@ -1,4 +1,7 @@
 {
+  "defoe": {
+    "sparkUrl": "http://localhost:3030/total_eb/sparql"
+  },
   "database": {
     "host": "127.0.0.1",
     "user": "frances",
