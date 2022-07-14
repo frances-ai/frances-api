@@ -3,7 +3,6 @@ from .flask_app import app
 import requests
 import traceback
 from .sparql_queries import *
-from flask_paginate import Pagination, get_page_parameter
 import itertools
 from itertools import islice
 from sklearn.metrics.pairwise import cosine_similarity
@@ -27,13 +26,15 @@ from werkzeug.datastructures import  FileStorage
 from io import BytesIO
 import base64
 
+from .api import Pagination, TermSearchResponse
+
 ######### PATHS
-defoe_path="/Users/rf208/Research/NLS-Fellowship/work/defoe"
-input_path_sum="/Users/damonyu/Documents/CS5098/frances-api/web-app/models"
+defoe_path="/../../defoe"
+input_path_sum="./models"
 
 ####### MODELS
-text_embeddings = np.load('/Users/damonyu/Documents/CS5098/frances-api/web-app/models/embeddings_mpnet.npy')
-topic_model = BERTopic.load('/Users/damonyu/Documents/CS5098/frances-api/web-app/models/BerTopic_Model_mpnet')
+text_embeddings = np.load('./models/embeddings_mpnet.npy')
+topic_model = BERTopic.load('./models/BerTopic_Model_mpnet') 
 model = SentenceTransformer('all-mpnet-base-v2')
 
 ######### TERMS INFO
@@ -62,12 +63,8 @@ clean_documents=load_data(input_path_sum, 'clean_terms_definitions_final.txt')
 
 ######
 
-@app.route("/", methods=["GET"])
-def home_page():
-    return render_template('home.html')
-
-@app.route("/term_search/<string:termlink>",  methods=['GET', 'POST'])
-@app.route("/term_search",  methods=['GET', 'POST'])
+@app.route("/term_search/<string:termlink>",  methods=['GET'])
+@app.route("/term_search",  methods=['GET'])
 def term_search(termlink=None):
 
     headers=["Year", "Edition", "Volume", "Start Page", "End Page", "Term Type", "Definition/Summary", "Related Terms", "Topic Modelling", "Sentiment_Score", "Advanced Options"]
@@ -129,10 +126,15 @@ def term_search(termlink=None):
     limit = offset+per_page
     results_for_render=dict(islice(results.items(),offset, limit))
     pagination = Pagination(page=page, total=len(results), per_page=page_size, search=False)
-    return render_template("results.html", results=results_for_render,
-                                           pagination = pagination,
-                                           headers=headers,
-                                           term=term, bar_plot=bar_plot, heatmap_plot=heatmap_plot)
+
+    return TermSearchResponse(
+      results=results_for_render,
+      pagination = pagination,
+      headers=headers,
+      term=term
+      # bar_plot=bar_plot,
+      # heatmap_plot=heatmap_plot,
+    ).encode()
 
 
 @app.route("/eb_details",  methods=['GET', 'POST'])
@@ -155,9 +157,6 @@ def eb_details():
     return render_template('eb_details.html', edList=edList)
 
 
-
-
-
 @app.route("/vol_details", methods=['GET', 'POST'])
 def vol_details():
     if request.method == "POST":
@@ -169,7 +168,6 @@ def vol_details():
             outputObj = { 'id':key , 'name': value }
             OutputArray.append(outputObj)
     return jsonify(OutputArray)
-
 
 
 @app.route("/visualization_resources", methods=['GET', 'POST'])
@@ -194,11 +192,6 @@ def visualization_resources(termlink=None, termtype=None):
             return render_template('visualization_resources.html', g_results=g_results, uri=uri)
         else:
             return render_template('visualization_resources.html')
-
-
-@app.route("/similar", methods=["GET"])
-def similar():
-    return render_template('similar.html')
 
 
 @app.route("/similar_terms", methods=["GET", "POST"])

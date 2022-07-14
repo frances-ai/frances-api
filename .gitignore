@@ -1,4 +1,10 @@
-*~
+# From https://github.com/github/gitignore/blob/main/Python.gitignore
 __pycache__/
+*.py[cod]
+*$py.class
+
 node_modules
 /web_app/models/
+
+# Linux files being edited
+*~
