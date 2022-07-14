@@ -1,6 +1,7 @@
 import psycopg2
 import psycopg2.extras
 
+import json
 import time
 import uuid
 from pathlib import Path
@@ -20,7 +21,14 @@ class DatabaseConfig:
         self.host = ""
         self.user = ""
         self.password = ""
-        self.database = ""
+    
+    @staticmethod
+    def from_dict(vals):
+        config = DatabaseConfig()
+        config.host = vals["host"]
+        config.user = vals["user"]
+        config.password = vals["password"]
+        return config
 
 
 class Database:

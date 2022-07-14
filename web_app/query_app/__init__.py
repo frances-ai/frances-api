@@ -9,7 +9,6 @@ from flask_jwt_extended import JWTManager
 from .config_folder.swagger import swagger_config, template
 from .controller.auth import auth
 
-
 def create_app(test_config=None):
     app = Flask(__name__, instance_relative_config=True)
     if test_config is None:

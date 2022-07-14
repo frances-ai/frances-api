@@ -2,7 +2,8 @@ import os
 import json
 import requests
 
-from .web_app.query_app.db import DatabaseConfig
+from .query_app.db import DatabaseConfig
+from .query_app import create_app
 from defoe.config import DefoeConfig
 
 CONSUL_VAR_NAME = "CONSUL_ADDRESS"
@@ -41,5 +42,9 @@ def resolve_config():
   return FrancesConfig.from_json(resp.text)
 
 
-config = resolve_config()
-print(config.defoe.spark_url)
+if __name__ == "__main__":
+  config = resolve_config()
+  print(config.defoe.spark_url)
+  
+  app = create_app()
+  app.run()

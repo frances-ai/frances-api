@@ -33,11 +33,11 @@ PARSERS = {
     ".xml": "xml",
 }
 
-UPLOAD_FOLDER = "/Users/damonyu/Documents/CS5098/frances-api/web-app/query_app/upload_folder"
+UPLOAD_FOLDER = BASE_DIR + "/query_app/upload_folder"
 
-CONFIG_FOLDER = "/Users/damonyu/Documents/CS5098/frances-api/web-app/query_app/config_folder"
+CONFIG_FOLDER = "BASE_DIR + /query_app/config_folder"
 
-RESULTS_FOLDER = "/Users/damonyu/Documents/CS5098/frances-api/web-app/query_app/defoe_results"
+RESULTS_FOLDER = BASE_DIR + "/query_app/defoe_results"
 
 ALLOWED_EXTENSIONS = {'txt', 'yaml', 'yml'}
 
