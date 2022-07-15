@@ -1,5 +1,4 @@
-from flask import Flask, render_template, send_file, request, jsonify, session
-from .flask_app import app
+from flask import Flask, Blueprint, render_template, send_file, request, jsonify, session
 import requests
 import traceback
 from .sparql_queries import *
@@ -63,8 +62,11 @@ clean_documents=load_data(input_path_sum, 'clean_terms_definitions_final.txt')
 
 ######
 
-@app.route("/term_search/<string:termlink>",  methods=['GET'])
-@app.route("/term_search",  methods=['GET'])
+query = Blueprint("query", __name__, url_prefix="/api/v1/query")
+
+
+@query.route("/term_search/<string:termlink>",  methods=['GET'])
+@query.route("/term_search",  methods=['GET'])
 def term_search(termlink=None):
 
     headers=["Year", "Edition", "Volume", "Start Page", "End Page", "Term Type", "Definition/Summary", "Related Terms", "Topic Modelling", "Sentiment_Score", "Advanced Options"]
@@ -137,7 +139,7 @@ def term_search(termlink=None):
     ).encode()
 
 
-@app.route("/eb_details",  methods=['GET', 'POST'])
+@query.route("/eb_details",  methods=['GET', 'POST'])
 def eb_details():
     edList=get_editions()
     if 'edition_selection' in request.form and 'volume_selection' in request.form:
@@ -157,7 +159,7 @@ def eb_details():
     return render_template('eb_details.html', edList=edList)
 
 
-@app.route("/vol_details", methods=['GET', 'POST'])
+@query.route("/vol_details", methods=['GET', 'POST'])
 def vol_details():
     if request.method == "POST":
         uri_raw=request.form.get('edition_selection')
@@ -170,7 +172,7 @@ def vol_details():
     return jsonify(OutputArray)
 
 
-@app.route("/visualization_resources", methods=['GET', 'POST'])
+@query.route("/visualization_resources", methods=['GET', 'POST'])
 def visualization_resources(termlink=None, termtype=None):
     if request.method == "POST":
         if 'resource_uri' in request.form:
@@ -194,7 +196,7 @@ def visualization_resources(termlink=None, termtype=None):
             return render_template('visualization_resources.html')
 
 
-@app.route("/similar_terms", methods=["GET", "POST"])
+@query.route("/similar_terms", methods=["GET", "POST"])
 def similar_terms(termlink=None):
     uri=""
     uri_raw=""
@@ -323,7 +325,7 @@ def similar_terms(termlink=None):
                                 bar_plot=bar_plot, heatmap_plot=heatmap_plot, t_sentiment=t_sentiment)
 
 
-@app.route("/topic_modelling", methods=["GET", "POST"])
+@query.route("/topic_modelling", methods=["GET", "POST"])
 def topic_modelling(topic_name=None):
     topic_name  = request.args.get('topic_name', None)
     num_topics=len(t_names)-2
@@ -381,7 +383,7 @@ def topic_modelling(topic_name=None):
                                     bar_plot=bar_plot, num_results=num_results, num_topics=num_topics)
 
 
-@app.route("/spelling_checker", methods=["GET", "POST"])
+@query.route("/spelling_checker", methods=["GET", "POST"])
 def spelling_checker(termlink=None):
     uri_raw=""
     uri=""
@@ -414,7 +416,7 @@ def spelling_checker(termlink=None):
         return render_template('spelling_checker.html',results=results, clean_definition=clean_definition, definition=definition)
 
 
-@app.route("/evolution_of_terms", methods=["GET", "POST"])
+@query.route("/evolution_of_terms", methods=["GET", "POST"])
 def evolution_of_terms(termlink=None):
     uri_raw=""
     uri=""
@@ -519,7 +521,7 @@ def evolution_of_terms(termlink=None):
                                 bar_plot=bar_plot, heatmap_plot=heatmap_plot, t_sentiment=t_sentiment)
 
 
-@app.route("/defoe_queries", methods=["GET", "POST"])
+@query.route("/defoe_queries", methods=["GET", "POST"])
 def defoe_queries():
     defoe_q=dict_defoe_queries()
 
@@ -611,7 +613,7 @@ def defoe_queries():
 
     return render_template('defoe.html', defoe_q=defoe_q)
 
-@app.route("/download", methods=['GET'])
+@query.route("/download", methods=['GET'])
 def download(defoe_selection=None):
     defoe_selection = request.args.get('defoe_selection', None)
     cwd = os.getcwd()
@@ -624,7 +626,7 @@ def download(defoe_selection=None):
     zip_file=os.path.join(app.config['RESULTS_FOLDER'], zip_file)
     return send_file(zip_file, as_attachment=True)
 
-@app.route("/visualize_freq", methods=['GET'])
+@query.route("/visualize_freq", methods=['GET'])
 def visualize_freq(defoe_selection=None):
     defoe_selection = request.args.get('defoe_selection', None)
     lexicon_file = request.args.get('lexicon_file', None)

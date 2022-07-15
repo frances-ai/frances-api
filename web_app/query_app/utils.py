@@ -2,7 +2,7 @@ from tqdm import tqdm
 from sklearn.metrics.pairwise import cosine_similarity
 import pickle
 import os, yaml
-from query_app.defoe_query_utils import preprocess_word, parse_preprocess_word_type
+from .defoe_query_utils import preprocess_word, parse_preprocess_word_type
 
 #### Matplotlib plots
 import matplotlib.pyplot as plt

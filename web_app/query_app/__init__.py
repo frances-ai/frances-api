@@ -8,6 +8,7 @@ from flask_jwt_extended import JWTManager
 
 from .config_folder.swagger import swagger_config, template
 from .controller.auth import auth
+from .controller.query import query
 
 from .config import DefaultFlaskConfig
 
@@ -26,4 +27,5 @@ def create_app(test_config=None):
 
     # Register blueprints
     app.register_blueprint(auth)
+    app.register_blueprint(query)
     return app
