@@ -2,6 +2,9 @@
   "defoe": {
     "sparkUrl": "http://localhost:3030/total_eb/sparql"
   },
+  "models": {
+    "filePath": "/home/username/frances-ai/frances-api/web_app/models"
+  },
   "database": {
     "host": "127.0.0.1",
     "user": "frances",
