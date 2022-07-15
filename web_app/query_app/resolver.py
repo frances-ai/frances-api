@@ -2,11 +2,12 @@ import os
 import json
 import requests
 
-from .query_app.db import Database, DatabaseConfig
-from .query_app import create_app
+from .db import Database, DatabaseConfig
 
 from defoe.config import DefoeConfig
 from defoe.service import DefoeService
+
+from .controller.models import ModelsConfig, ModelsRepository
 
 CONSUL_VAR_NAME = "CONSUL_ADDRESS"
 CONSUL_PROTOCOL = "http://"
@@ -14,12 +15,15 @@ CONSUL_DEFAULT_ADDRESS = "localhost:8500"
 CONFIG_PATH = "/v1/kv/frances/config?raw"
 
 config = None
-database = None
 defoe = None
+models = None
+database = None
+
 
 class QueryAppConfig:
   def __init__(self):
     self.defoe = None
+    self.models = None
     self.database = None
 
   @staticmethod
@@ -27,6 +31,7 @@ class QueryAppConfig:
     vals = json.loads(text)
     config = QueryAppConfig()
     config.defoe = DefoeConfig.from_dict(vals["defoe"])
+    config.models = ModelsConfig.from_dict(vals["models"])
     config.database = DatabaseConfig.from_dict(vals["database"])
     return config
 
@@ -43,6 +48,7 @@ def get_config_url():
   return CONSUL_PROTOCOL + consul_address + CONFIG_PATH
 
 def get_config():
+  global config
   if config != None:
     return config
   url = get_config_url()
@@ -50,14 +56,24 @@ def get_config():
   config = QueryAppConfig.from_json(resp.text)
   return config
 
+def get_defoe():
+  global defoe
+  if defoe != None:
+    return defoe
+  defoe = DefoeService(get_config().defoe)
+  return defoe
+
+def get_models():
+  global models
+  if models != None:
+    return models
+  models = ModelsRepository(get_config().models)
+  return models
+
 def get_database():
+  global databas
   if database != None:
     return database
   database = Database(get_config().database)
   return database
 
-def get_defoe():
-  if defoe != None:
-    return defoe
-  defoe = DefoeService(get_config().defoe)
-  return defoe

@@ -6,63 +6,30 @@ import itertools
 from itertools import islice
 from sklearn.metrics.pairwise import cosine_similarity
 from .utils import calculating_similarity_text, get_topic_name, retrieving_similariy
-from .utils import plot_taxonomy_freq, load_data, preprocess_lexicon, dict_defoe_queries, read_results
+from .utils import plot_taxonomy_freq, preprocess_lexicon, dict_defoe_queries, read_results
 
-import numpy as np
 import os, yaml
 import pickle
-from sentence_transformers import SentenceTransformer
 from tqdm import tqdm
-from bertopic import BERTopic
 from zipfile import *
 from matplotlib.backends.backend_agg import FigureCanvasAgg as FigureCanvas
 from matplotlib.figure import Figure
 from operator import itemgetter
 
 from werkzeug.utils import secure_filename
-from werkzeug.datastructures import  FileStorage
+from werkzeug.datastructures import FileStorage
 
 from io import BytesIO
 import base64
 
 from .query_api import Pagination, TermSearchResponse
+from ..resolver import get_models
 
 ######### PATHS
 defoe_path="/../../defoe"
-input_path_sum="./models"
-
-####### MODELS
-text_embeddings = np.load('./models/embeddings_mpnet.npy')
-topic_model = BERTopic.load('./models/BerTopic_Model_mpnet') 
-model = SentenceTransformer('all-mpnet-base-v2')
-
-######### TERMS INFO
-documents=load_data(input_path_sum, 'terms_definitions_final.txt')
-terms_info=load_data(input_path_sum, 'terms_details.txt')
-uris=load_data(input_path_sum, 'terms_uris.txt')
-
-######## TERMS SIMILARITY
-paraphrases=load_data(input_path_sum, 'paraphrases_mpnet.txt')
-paraphrases_index_first=load_data(input_path_sum, 'paraphrases_index_first.txt')
-paraphrases_index_second=load_data(input_path_sum, 'paraphrases_index_second.txt')
-
-
-######### LDA TOPIC MODELLING
-### lda topics_mpnet[-1] --> 5: Just the number of the lda topic per term
-topics=load_data(input_path_sum, 'lda_topics_mpnet.txt')
-## The names of topics: t_names -->['1_lat_miles_long_town', '0_the_to_and_is'
-t_names=load_data(input_path_sum, 'lda_t_names_mpnet.txt')
-
-#### The topic of each document: topics_names ['1_lat_miles_long_town', '0_the_to_and_is', '79_church_romiffi_idol_deum', '11_poetry_verse_verses_poem', '0_the_to_and_is', '0_the_to_and_is', '0_the_to_and_is', '0_the_to_and_is', '6_measure_weight_inches_containing', '1_lat_miles_long_town']
-topics_names=load_data(input_path_sum, 'lda_topics_names_mpnet.txt')
-
-######### SENTIMENT AND CLEAN TERMS
-sentiment_terms=load_data(input_path_sum,'terms_sentiments.txt')
-clean_documents=load_data(input_path_sum, 'clean_terms_definitions_final.txt')
-
-######
 
 query = Blueprint("query", __name__, url_prefix="/api/v1/query")
+models = get_models()
 
 
 @query.route("/term_search/<string:termlink>",  methods=['GET'])
@@ -85,24 +52,24 @@ def term_search(termlink=None):
         term=session.get('term')
     if not term:
         term = "AABAM"
-    results =get_definition(term, documents, uris)
+    results =get_definition(term, models.documents, models.uris)
     topics_vis=[]
     for key, value in results.items():
         try:
-            index_uri=uris.index(key)
-            topic_name = topics_names[index_uri]
-            score='%.2f'%sentiment_terms[index_uri][0]['score']
-            if "LABEL_0" in sentiment_terms[index_uri][0]['label']:
+            index_uri=models.uris.index(key)
+            topic_name = models.topics_names[index_uri]
+            score='%.2f'%models.sentiment_terms[index_uri][0]['score']
+            if "LABEL_0" in models.sentiment_terms[index_uri][0]['label']:
                label="POSITIVE"
                sentiment = label+"_"+score
-            elif "LABEL_1" in sentiment_terms[index_uri][0]['label']:
+            elif "LABEL_1" in models.sentiment_terms[index_uri][0]['label']:
                label="NEGATIVE"
                sentiment = label+"_"+score
             else:
-                sentiment = sentiment_terms[index_uri][0]['label']+"_"+score
-            if topics[index_uri] not in topics_vis:
-                topics_vis.append(topics[index_uri])
-            topic_name = get_topic_name(index_uri, topics, topic_model)
+                sentiment = models.sentiment_terms[index_uri][0]['label']+"_"+score
+            if models.topics[index_uri] not in topics_vis:
+                topics_vis.append(models.topics[index_uri])
+            topic_name = get_topic_name(index_uri, models.topics, models.topic_model)
             topic_name=topic_name.replace(" ", "_")
             print("---- topic_name is %s" % topic_name)
             value.append(topic_name)
@@ -111,12 +78,12 @@ def term_search(termlink=None):
         except:
              pass
     if len(topics_vis) >= 1:
-        fig1=topic_model.visualize_barchart(topics_vis, n_words=10)
+        fig1=models.topic_model.visualize_barchart(topics_vis, n_words=10)
         bar_plot = fig1.to_json()
     else:
         bar_plot=None
     if len(topics_vis) >= 2:
-        fig2=topic_model.visualize_heatmap(topics_vis)
+        fig2=models.topic_model.visualize_heatmap(topics_vis)
         heatmap_plot = fig2.to_json()
     else:
         heatmap_plot=None
@@ -234,21 +201,21 @@ def similar_terms(termlink=None):
         data_similar = session.get('data_similar')
 
     if "free_search" in uri_raw:
-        results, topics_vis=calculating_similarity_text(data_similar,text_embeddings, model, terms_info, documents,uris, topics_names,topics, sentiment_terms, -1)
+        results, topics_vis=calculating_similarity_text(data_similar,models.text_embeddings, model, models.terms_info, models.documents, models.uris, models.topics_names, models.topics, models.sentiment_terms, -1)
 
     else:
         term, definition, enum, year, vnum  =get_document(uri)
-        index_uri=uris.index(uri_raw)
-        t_name=topics_names[index_uri]
-        score='%.2f'%sentiment_terms[index_uri][0]['score']
-        if "LABEL_0" in sentiment_terms[index_uri][0]['label']:
+        index_uri=models.uris.index(uri_raw)
+        t_name=models.topics_names[index_uri]
+        score='%.2f'%models.sentiment_terms[index_uri][0]['score']
+        if "LABEL_0" in models.sentiment_terms[index_uri][0]['label']:
             label="POSITIVE"
             t_sentiment = label+"_"+score
-        elif "LABEL_1" in sentiment_terms[index_uri][0]['label']:
+        elif "LABEL_1" in models.sentiment_terms[index_uri][0]['label']:
             label="NEGATIVE"
             t_sentiment = label+"_"+score
         else:
-            t_sentiment = sentiment_terms[index_uri][0]['label']+"_"+score
+            t_sentiment = models.sentiment_terms[index_uri][0]['label']+"_"+score
 
         print("----> index_uri is %s" %index_uri)
         results={}
@@ -258,50 +225,50 @@ def similar_terms(termlink=None):
         #    rank, i, similar_index = r_sim
         #    r_similar_index.append(similar_index)
         #    print(similar_index)
-        #    score='%.2f'%sentiment_terms[similar_index][0]['score']
-        #    if "LABEL_0" in sentiment_terms[similar_index][0]['label']:
+        #    score='%.2f'%models.sentiment_terms[similar_index][0]['score']
+        #    if "LABEL_0" in models.sentiment_terms[similar_index][0]['label']:
         #       label="POSITIVE"
         #       sentiment = label+"_"+score
-        #    elif "LABEL_1" in sentiment_terms[similar_index][0]['label']:
+        #    elif "LABEL_1" in models.sentiment_terms[similar_index][0]['label']:
         #       label="NEGATIVE"
         #       sentiment = label+"_"+score
         #    else:
-        #        sentiment = sentiment_terms[similar_index][0]['label']+"_"+score
-        #    topic_name = topics_names[similar_index]
+        #        sentiment = models.sentiment_terms[similar_index][0]['label']+"_"+score
+        #    topic_name = models.topics_names[similar_index]
         #    if topics[similar_index] not in topics_vis:
         #        topics_vis.append(topics[similar_index])
-        #    results[uris[similar_index]]=[terms_info[similar_index][1],terms_info[similar_index][2], terms_info[similar_index][4], terms_info[similar_index][0], documents[similar_index], topic_name, rank, sentiment]
+        #    results[uris[similar_index]]=[models.terms_info[similar_index][1],models.terms_info[similar_index][2], models.terms_info[similar_index][4], models.terms_info[similar_index][0], documents[similar_index], topic_name, rank, sentiment]
         #results_sim_second=retrieving_similariy(paraphrases_index_second, index_uri, paraphrases)
         #for r_sim in results_sim_second:
         #    rank, similar_index, j = r_sim
         #    if similar_index not in r_similar_index:
         #        r_similar_index.append(similar_index)
         #        print(similar_index)
-        #        score='%.2f'%sentiment_terms[similar_index][0]['score']
-        #        if "LABEL_0" in sentiment_terms[similar_index][0]['label']:
+        #        score='%.2f'%models.sentiment_terms[similar_index][0]['score']
+        #        if "LABEL_0" in models.sentiment_terms[similar_index][0]['label']:
         #            label="POSITIVE"
         #            sentiment = label+"_"+score
-        #        elif "LABEL_1" in sentiment_terms[similar_index][0]['label']:
+        #        elif "LABEL_1" in models.sentiment_terms[similar_index][0]['label']:
         #            label="NEGATIVE"
         #            sentiment = label+"_"+score
         #        else:
-        #            sentiment = sentiment_terms[similar_index][0]['label']+"_"+score
-        #        topic_name = topics_names[similar_index]
+        #            sentiment = models.sentiment_terms[similar_index][0]['label']+"_"+score
+        #        topic_name = models.topics_names[similar_index]
         #        if topics[similar_index] not in topics_vis:
         #            topics_vis.append(topics[similar_index])
-        #        results[uris[similar_index]]=[terms_info[similar_index][1],terms_info[similar_index][2], terms_info[similar_index][4], terms_info[similar_index][0], documents[similar_index], topic_name, rank, sentiment]
+        #        results[uris[similar_index]]=[models.terms_info[similar_index][1],models.terms_info[similar_index][2], models.terms_info[similar_index][4], models.terms_info[similar_index][0], documents[similar_index], topic_name, rank, sentiment]
         #if len(r_similar_index)==0:
-        results, topics_vis=calculating_similarity_text(definition,text_embeddings, model, terms_info, documents,uris, topics_names,topics, sentiment_terms, index_uri)
+        results, topics_vis=calculating_similarity_text(definition,models.text_embeddings, models.model, models.terms_info, models.documents, models.uris, models.topics_names, models.topics, models.sentiment_terms, index_uri)
     if len(topics_vis) >= 1:
-        fig1=topic_model.visualize_barchart(topics_vis, n_words=10)
+        fig1=models.topic_model.visualize_barchart(topics_vis, n_words=10)
         bar_plot = fig1.to_json()
     if len(topics_vis) >= 1:
-        fig1=topic_model.visualize_barchart(topics_vis, n_words=10)
+        fig1=models.topic_model.visualize_barchart(topics_vis, n_words=10)
         bar_plot = fig1.to_json()
     else:
         bar_plot=None
     if len(topics_vis) >= 2:
-        fig2=topic_model.visualize_heatmap(topics_vis)
+        fig2=models.topic_model.visualize_heatmap(topics_vis)
         heatmap_plot = fig2.to_json()
     else:
         heatmap_plot=None
@@ -328,17 +295,17 @@ def similar_terms(termlink=None):
 @query.route("/topic_modelling", methods=["GET", "POST"])
 def topic_modelling(topic_name=None):
     topic_name  = request.args.get('topic_name', None)
-    num_topics=len(t_names)-2
+    num_topics=len(models.t_names)-2
     if topic_name == None:
         if 'topic_name' in request.form:
             topic_name=request.form.get('topic_name')
             if topic_name=="":
                 topic_name="0_hindustan_of_hindustan_hindustan_in_district"
             else:
-                if topic_name not in t_names:
+                if topic_name not in models.t_names:
                     full_topic_name=""
                     number=topic_name+"_"
-                    for x in t_names:
+                    for x in models.t_names:
                         if x.startswith(number):
                             full_topic_name=x
                     if full_topic_name:
@@ -351,22 +318,22 @@ def topic_modelling(topic_name=None):
          topic_name=session.get('topic_name')
     if not topic_name:
         return render_template('topic_modelling.html', num_topics=num_topics)
-    indices = [i for i, x in enumerate(topics_names) if x == topic_name]
+    indices = [i for i, x in enumerate(models.topics_names) if x == topic_name]
     results={}
     for t_i in indices:
-        score='%.2f'%sentiment_terms[t_i][0]['score']
-        if "LABEL_0" in sentiment_terms[t_i][0]['label']:
+        score='%.2f'%models.sentiment_terms[t_i][0]['score']
+        if "LABEL_0" in models.sentiment_terms[t_i][0]['label']:
             label="POSITIVE"
             sentiment = label+"_"+score
-        elif "LABEL_1" in sentiment_terms[t_i][0]['label']:
+        elif "LABEL_1" in models.sentiment_terms[t_i][0]['label']:
             label="NEGATIVE"
             sentiment = label+"_"+score
         else:
-           sentiment = sentiment_terms[t_i][0]['label']+"_"+score
-        results[uris[t_i]]=[terms_info[t_i][1],terms_info[t_i][2], terms_info[t_i][4], terms_info[t_i][0], documents[t_i], sentiment]
+           sentiment = models.sentiment_terms[t_i][0]['label']+"_"+score
+        results[models.uris[t_i]]=[models.terms_info[t_i][1],models.terms_info[t_i][2], models.terms_info[t_i][4], models.terms_info[t_i][0], models.documents[t_i], sentiment]
     num_results=len(indices)
-    first_topic=topics[indices[0]]
-    fig1=topic_model.visualize_barchart([first_topic], n_words=10)
+    first_topic=models.topics[indices[0]]
+    fig1=models.topic_model.visualize_barchart([first_topic], n_words=10)
     bar_plot = fig1.to_json()
 
     #### Pagination ###
@@ -408,9 +375,9 @@ def spelling_checker(termlink=None):
         return render_template('spelling_checker.html')
     else:
         term, definition, enum, year, vnum=get_document(uri)
-        index_uri=uris.index(uri_raw)
-        definition=documents[index_uri]
-        clean_definition=clean_documents[index_uri]
+        index_uri=models.uris.index(uri_raw)
+        definition=models.documents[index_uri]
+        clean_definition=models.clean_documents[index_uri]
         results={}
         results[uri_raw]=[enum,year, vnum, term]
         return render_template('spelling_checker.html',results=results, clean_definition=clean_definition, definition=definition)
@@ -444,20 +411,20 @@ def evolution_of_terms(termlink=None):
 
     else:
         term, definition, enum, year, vnum  =get_document(uri)
-        index_uri=uris.index(uri_raw)
-        t_name=topics_names[index_uri]
-        score='%.2f'%sentiment_terms[index_uri][0]['score']
-        if "LABEL_0" in sentiment_terms[index_uri][0]['label']:
+        index_uri=models.uris.index(uri_raw)
+        t_name=models.topics_names[index_uri]
+        score='%.2f'%models.sentiment_terms[index_uri][0]['score']
+        if "LABEL_0" in models.sentiment_terms[index_uri][0]['label']:
             label="POSITIVE"
             t_sentiment = label+"_"+score
-        elif "LABEL_1" in sentiment_terms[index_uri][0]['label']:
+        elif "LABEL_1" in models.sentiment_terms[index_uri][0]['label']:
             label="NEGATIVE"
             t_sentiment = label+"_"+score
         else:
-            t_sentiment = sentiment_terms[index_uri][0]['label']+"_"+score
+            t_sentiment = models.sentiment_terms[index_uri][0]['label']+"_"+score
 
         print("----> index_uri in term evoultion is is %s" %index_uri)
-        results_sim_first=retrieving_similariy(paraphrases_index_first, index_uri, paraphrases)
+        results_sim_first=retrieving_similariy(models.paraphrases_index_first, index_uri, models.paraphrases)
         results=[]
         topics_vis=[]
         r_similar_index=[]
@@ -465,38 +432,38 @@ def evolution_of_terms(termlink=None):
             rank, i, similar_index = r_sim
             r_similar_index.append(similar_index)
             print(similar_index)
-            score='%.2f'%sentiment_terms[similar_index][0]['score']
-            if "LABEL_0" in sentiment_terms[similar_index][0]['label']:
+            score='%.2f'%models.sentiment_terms[similar_index][0]['score']
+            if "LABEL_0" in models.sentiment_terms[similar_index][0]['label']:
                 label="POSITIVE"
                 sentiment = label+"_"+score
-            elif "LABEL_1" in sentiment_terms[similar_index][0]['label']:
+            elif "LABEL_1" in models.sentiment_terms[similar_index][0]['label']:
                 label="NEGATIVE"
                 sentiment = label+"_"+score
             else:
-                sentiment = sentiment_terms[similar_index][0]['label']+"_"+score
-            topic_name = topics_names[similar_index]
-            if topics[similar_index] not in topics_vis:
-                topics_vis.append(topics[similar_index])
-            results.append([uris[similar_index], terms_info[similar_index][1],terms_info[similar_index][2], terms_info[similar_index][4], terms_info[similar_index][0], documents[similar_index], topic_name, rank, sentiment])
-        results_sim_second=retrieving_similariy(paraphrases_index_second, index_uri, paraphrases)
+                sentiment = models.sentiment_terms[similar_index][0]['label']+"_"+score
+            topic_name = models.topics_names[similar_index]
+            if models.topics[similar_index] not in topics_vis:
+                topics_vis.append(models.topics[similar_index])
+            results.append([models.uris[similar_index], models.terms_info[similar_index][1],models.terms_info[similar_index][2], models.terms_info[similar_index][4], models.terms_info[similar_index][0], models.documents[similar_index], topic_name, rank, sentiment])
+        results_sim_second=retrieving_similariy(models.paraphrases_index_second, index_uri, models.paraphrases)
         for r_sim in results_sim_second:
             rank, similar_index, j = r_sim
             if similar_index not in r_similar_index:
                 r_similar_index.append(similar_index)
                 print(similar_index)
-                score='%.2f'%sentiment_terms[similar_index][0]['score']
-                if "LABEL_0" in sentiment_terms[similar_index][0]['label']:
+                score='%.2f'%models.sentiment_terms[similar_index][0]['score']
+                if "LABEL_0" in models.sentiment_terms[similar_index][0]['label']:
                     label="POSITIVE"
                     sentiment = label+"_"+score
-                elif "LABEL_1" in sentiment_terms[similar_index][0]['label']:
+                elif "LABEL_1" in models.sentiment_terms[similar_index][0]['label']:
                     label="NEGATIVE"
                     sentiment = label+"_"+score
                 else:
-                    sentiment = sentiment_terms[similar_index][0]['label']+"_"+score
-                topic_name = topics_names[similar_index]
-                if topics[similar_index] not in topics_vis:
-                    topics_vis.append(topics[similar_index])
-                results.append([uris[similar_index], terms_info[similar_index][1],terms_info[similar_index][2], terms_info[similar_index][4], terms_info[similar_index][0], documents[similar_index], topic_name, rank, sentiment])
+                    sentiment = models.sentiment_terms[similar_index][0]['label']+"_"+score
+                topic_name = models.topics_names[similar_index]
+                if models.topics[similar_index] not in topics_vis:
+                    topics_vis.append(models.topics[similar_index])
+                results.append([models.uris[similar_index], models.terms_info[similar_index][1],models.terms_info[similar_index][2], models.terms_info[similar_index][4], models.terms_info[similar_index][0], models.documents[similar_index], topic_name, rank, sentiment])
 
     results_sorted=[]
     results_sorted=sorted(results, key=itemgetter(2))
@@ -505,12 +472,12 @@ def evolution_of_terms(termlink=None):
         results_dic_sorted[r[0]]=r[1:]
 
     if len(topics_vis) >= 1:
-        fig1=topic_model.visualize_barchart(topics_vis, n_words=10)
+        fig1=models.topic_model.visualize_barchart(topics_vis, n_words=10)
         bar_plot = fig1.to_json()
     else:
         bar_plot=None
     if len(topics_vis) >= 2:
-        fig2=topic_model.visualize_heatmap(topics_vis)
+        fig2=models.topic_model.visualize_heatmap(topics_vis)
         heatmap_plot = fig2.to_json()
     else:
         heatmap_plot=None
