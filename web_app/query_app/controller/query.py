@@ -25,7 +25,7 @@ from werkzeug.datastructures import  FileStorage
 from io import BytesIO
 import base64
 
-from .api import Pagination, TermSearchResponse
+from .query_api import Pagination, TermSearchResponse
 
 ######### PATHS
 defoe_path="/../../defoe"
