@@ -10,7 +10,7 @@ from .config_folder.swagger import swagger_config, template
 from .controller.auth import auth
 from .controller.query import query
 
-from .config import DefaultFlaskConfig
+from .flask_config import DefaultFlaskConfig
 
 def create_app(test_config=None):
     app = Flask(__name__, instance_relative_config=True)
