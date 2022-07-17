@@ -1,12 +1,16 @@
 from flask import Flask, Blueprint, render_template, send_file, request, jsonify, session
+from flask_paginate import Pagination
+from http import HTTPStatus
 import requests
 import traceback
 from .sparql_queries import *
 import itertools
 from itertools import islice
 from sklearn.metrics.pairwise import cosine_similarity
+
 from .utils import calculating_similarity_text, get_topic_name, retrieving_similariy
 from .utils import plot_taxonomy_freq, preprocess_lexicon, dict_defoe_queries, read_results
+from .utils import pagination_to_dict
 
 import os, yaml
 import pickle
@@ -22,8 +26,8 @@ from werkzeug.datastructures import FileStorage
 from io import BytesIO
 import base64
 
-from .query_api import Pagination, TermSearchResponse
 from ..resolver import get_models
+from flasgger import swag_from
 
 ######### PATHS
 defoe_path="/../../defoe"
@@ -33,14 +37,13 @@ models = get_models()
 
 
 @query.route("/term_search/<string:termlink>",  methods=['GET'])
-@query.route("/term_search",  methods=['GET'])
+@query.route("/term_search",  methods=['POST'])
+@swag_from("../docs/query/term_search.yml")
 def term_search(termlink=None):
-
-    headers=["Year", "Edition", "Volume", "Start Page", "End Page", "Term Type", "Definition/Summary", "Related Terms", "Topic Modelling", "Sentiment_Score", "Advanced Options"]
     if request.method == "POST":
         if "search" in request.form:
             term = request.form["search"]
-        if not term:
+        else:
             term = "AABAM"
         term=term.upper()
         session['term'] = term
@@ -50,8 +53,9 @@ def term_search(termlink=None):
         session['term'] = term
     else:
         term=session.get('term')
-    if not term:
-        term = "AABAM"
+
+    headers=["Year", "Edition", "Volume", "Start Page", "End Page", "Term Type", "Definition/Summary", "Related Terms", "Topic Modelling", "Sentiment_Score", "Advanced Options"]
+
     results =get_definition(term, models.documents, models.uris)
     topics_vis=[]
     for key, value in results.items():
@@ -95,15 +99,17 @@ def term_search(termlink=None):
     limit = offset+per_page
     results_for_render=dict(islice(results.items(),offset, limit))
     pagination = Pagination(page=page, total=len(results), per_page=page_size, search=False)
-
-    return TermSearchResponse(
-      results=results_for_render,
-      pagination = pagination,
-      headers=headers,
-      term=term
-      # bar_plot=bar_plot,
-      # heatmap_plot=heatmap_plot,
-    ).encode()
+    
+    return jsonify({
+        "results": results_for_render,
+        "pagination": pagination_to_dict(pagination),
+        "headers": headers,
+        "term": term,
+    }), HTTPStatus.OK
+    # return TermSearchResponse(
+    #   # bar_plot=bar_plot,
+    #   # heatmap_plot=heatmap_plot,
+    # ).encode()
 
 
 @query.route("/eb_details",  methods=['GET', 'POST'])

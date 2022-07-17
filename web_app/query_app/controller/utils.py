@@ -176,4 +176,10 @@ def plot_taxonomy_freq(taxonomy, results, norm_publication):
 
     return plot_f, plot_n_f
 
-
+def pagination_to_dict(p):
+  return {
+    "page": p.page,
+    "total": p.total,
+    "perPage": p.per_page,
+    "search": p.search,
+  }

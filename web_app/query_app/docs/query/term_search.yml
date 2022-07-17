@@ -1,0 +1,22 @@
+Term Search
+---
+tags:
+  - Query
+parameters:
+  - in: path
+    name: termlink
+    type: string
+    required: false
+  - in: formData
+    name: search
+    type: string
+    description: User should provide a search term.
+    required: false
+
+responses:
+  201:
+    description: Search results
+
+  400:
+    description: Invalid input
+
