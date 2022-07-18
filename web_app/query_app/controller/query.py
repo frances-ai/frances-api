@@ -145,16 +145,16 @@ def eb_details():
     }), HTTPStatus.OK
 
 
-@query.route("/vol_details", methods=['GET', 'POST'])
+@query.route("/vol_details", methods=['POST'])
+@swag_from("../docs/query/vol_details.yml")
 def vol_details():
-    if request.method == "POST":
-        uri_raw=request.form.get('edition_selection')
-        uri="<"+uri_raw+">"
-        volList=get_volumes(uri)
-        OutputArray = []
-        for key, value in sorted(volList.items(), key=lambda item: item[1]):
-            outputObj = { 'id':key , 'name': value }
-            OutputArray.append(outputObj)
+    uri_raw=request.form.get('edition_selection')
+    uri="<"+uri_raw+">"
+    volList=get_volumes(uri)
+    OutputArray = []
+    for key, value in sorted(volList.items(), key=lambda item: item[1]):
+        outputObj = { 'id':key , 'name': value }
+        OutputArray.append(outputObj)
     return jsonify(OutputArray)
 
 

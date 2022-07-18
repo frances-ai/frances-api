@@ -1,0 +1,17 @@
+Volume Details
+---
+tags:
+  - Query
+parameters:
+  - in: formData
+    name: edition_selection
+    type: string
+    description: The edition to list the volumes of.
+    required: false
+
+responses:
+  201:
+    description: Volumes list
+  400:
+    description: Invalid input
+
