@@ -16,7 +16,6 @@ parameters:
 responses:
   201:
     description: Search results
-
   400:
     description: Invalid input
 

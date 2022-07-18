@@ -112,7 +112,8 @@ def term_search(termlink=None):
     # ).encode()
 
 
-@query.route("/eb_details",  methods=['GET', 'POST'])
+@query.route("/eb_details",  methods=['POST'])
+@swag_from("../docs/query/eb_details.yml")
 def eb_details():
     edList=get_editions()
     if 'edition_selection' in request.form and 'volume_selection' in request.form:
@@ -126,10 +127,22 @@ def eb_details():
             ed_st=get_vol_statistics(vol_uri)
             ed_name=edList[ed_raw]
             vol_name=get_vol_by_vol_uri(vol_uri)
-            return render_template('eb_details.html', edList=edList,  ed_r=ed_r, ed_v=ed_v, ed_st=ed_st, ed_name=ed_name, vol_name=vol_name)
-        else:
-            return render_template('eb_details.html', edList=edList)
-    return render_template('eb_details.html', edList=edList)
+            return jsonify({
+                    "editionList": edList,
+                    "edition": {
+                      "name": ed_name,
+                      "details": ed_r,
+                    },
+                    "volume": {
+                      "name": vol_name,
+                      "details": ed_v,
+                      "statistics": ed_st,
+                    },
+                }), HTTPStatus.OK
+    
+    return jsonify({
+        "editionList": edList,
+    }), HTTPStatus.OK
 
 
 @query.route("/vol_details", methods=['GET', 'POST'])
