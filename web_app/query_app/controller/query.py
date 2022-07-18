@@ -159,6 +159,7 @@ def vol_details():
 
 
 @query.route("/visualization_resources", methods=['GET', 'POST'])
+@swag_from("../docs/query/visualization_resources.yml")
 def visualization_resources(termlink=None, termtype=None):
     if request.method == "POST":
         if 'resource_uri' in request.form:
@@ -168,18 +169,28 @@ def visualization_resources(termlink=None, termtype=None):
             else:
                 uri="<"+uri_raw+">"
             g_results=describe_resource(uri)
-            return render_template('visualization_resources.html', g_results=g_results, uri=uri)
-    else:
-        termlink  = request.args.get('termlink', None)
-        termtype  = request.args.get('termtype', None)
-        if termlink!=None:
-            if ">" in termlink:
-                termlink=termlink.split(">")[0]
-            uri="<https://w3id.org/eb/i/"+termtype+"/"+termlink+">"
-            g_results=describe_resource(uri)
-            return render_template('visualization_resources.html', g_results=g_results, uri=uri)
-        else:
-            return render_template('visualization_resources.html')
+            return jsonify({
+                "results": g_results,
+                "uri": uri,
+            }), HTTPStatus.OK
+    
+    # handle GET request
+    termlink  = request.args.get('termlink', None)
+    termtype  = request.args.get('termtype', None)
+    if termlink!=None:
+        if ">" in termlink:
+            termlink=termlink.split(">")[0]
+        uri="<https://w3id.org/eb/i/"+termtype+"/"+termlink+">"
+        g_results=describe_resource(uri)
+        return jsonify({
+            "results": g_results,
+            "uri": uri,
+        }), HTTPStatus.OK
+    
+    # return error status code
+    return jsonify({
+        "message": "termlink not found",
+    }), HTTPStatus.BAD_REQUEST
 
 
 @query.route("/similar_terms", methods=["GET", "POST"])
