@@ -11,6 +11,8 @@ dataset_url="http://localhost:3030/$/datasets/${dataset}"
 upload_data_url="http://localhost:3030/${dataset}/data"
 fuseki_admin_password="pass123"
 
+consul_url="http://127.0.0.1:8500/v1/kv/frances/config"
+
 # Check fuseki for the uploaded knowledge graph
 fuseki_response=$(
   curl -X GET $dataset_url \
@@ -38,8 +40,8 @@ if [[ "$fuseki_response" == 404 ]] ; then
 fi
 
 # # Set Consul key/value
-# config=`cat local-config.json`
-# curl -X PUT -d "$config" http://127.0.0.1:8500/v1/kv/frances/config
+consul_config=`cat ${config_file}`
+curl -X PUT -d "$consul_config" $consul_url
 
 # # Start backend server
 # cd ..
