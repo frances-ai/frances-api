@@ -15,6 +15,8 @@ import plotly.figure_factory as ff
 import pandas as pd
 import plotly.express as px
 
+import numpy as np
+
 ###
 def load_data(input_path_embed, file_name):
     with open (os.path.join(input_path_embed, file_name), 'rb') as fp:
@@ -183,3 +185,20 @@ def pagination_to_dict(p):
     "perPage": p.per_page,
     "search": p.search,
   }
+
+def sanitize_results(results):
+  sanitized = {}
+  for key, val in results.items():
+      sanitized[key] = sanitize_array(val)
+  return sanitized
+
+def sanitize_array(items):
+  sanitized = []
+  for value in items:
+      if type(value) is np.float32:
+          # convert numpy float to python float
+          sanitized.append(value.item())
+          continue
+      sanitized.append(value)
+  return sanitized
+

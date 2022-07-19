@@ -10,7 +10,7 @@ from sklearn.metrics.pairwise import cosine_similarity
 
 from .utils import calculating_similarity_text, get_topic_name, retrieving_similariy
 from .utils import plot_taxonomy_freq, preprocess_lexicon, dict_defoe_queries, read_results
-from .utils import pagination_to_dict
+from .utils import pagination_to_dict, sanitize_results
 
 import os, yaml
 import pickle
@@ -194,6 +194,7 @@ def visualization_resources(termlink=None, termtype=None):
 
 
 @query.route("/similar_terms", methods=["GET", "POST"])
+@swag_from("../docs/query/similar_terms.yml")
 def similar_terms(termlink=None):
     uri=""
     uri_raw=""
@@ -309,17 +310,33 @@ def similar_terms(termlink=None):
     per_page = 10
     offset = (page-1) * per_page
     limit = offset+per_page
-    results_for_render=dict(islice(results.items(),offset, limit))
+    results_page = dict(islice(results.items(),offset, limit))
+    results_for_render = sanitize_results(results_page)
     pagination = Pagination(page=page, total=len(results), per_page=page_size, search=False)
     ##############
+    
     if "free_search" in uri_raw:
-        return render_template('results_similar.html',  results=results_for_render, pagination=pagination,
-                                bar_plot=bar_plot, heatmap_plot=heatmap_plot)
+        return jsonify({
+            "results": results_for_render,
+            "pagination": pagination_to_dict(pagination),
+            # "bar_plot": bar_plot,
+            # "heatmap_plot": heatmap_plot,
+        }), HTTPStatus.OK
     else:
-        return render_template('results_similar.html', results=results_for_render, pagination=pagination,
-                                term=term, definition=definition, uri=uri_raw,
-                                enum=enum, year=year, vnum=vnum, t_name=t_name,
-                                bar_plot=bar_plot, heatmap_plot=heatmap_plot, t_sentiment=t_sentiment)
+        return jsonify({
+            "results": results_for_render,
+            "pagination": pagination_to_dict(pagination),
+            "term": term,
+            "definition": definition,
+            "uri": uri_raw,
+            "enum": enum,
+            "year": year,
+            "vnum": vnum,
+            "topicName": t_name,
+            "topicSentiment": t_sentiment,
+            # "bar_plot": bar_plot,
+            # "heatmap_plot": heatmap_plot,
+        }), HTTPStatus.OK
 
 
 @query.route("/topic_modelling", methods=["GET", "POST"])
