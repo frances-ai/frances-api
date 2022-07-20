@@ -1,0 +1,26 @@
+Spelling checker
+---
+tags:
+  - Query
+parameters:
+  - in: formData
+    name: resource_uri
+    type: string
+    description: The URI of the resource to spell check.
+    required: false
+  - in: query
+    name: termlink
+    type: string
+    description: The link to the term to query.
+    required: false
+  - in: query
+    name: termtype
+    type: string
+    description: The type of term to query.
+    required: false
+responses:
+  201:
+    description: Spell check result
+  400:
+    description: Invalid input
+

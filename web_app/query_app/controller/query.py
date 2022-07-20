@@ -401,6 +401,7 @@ def topic_modelling(topic_name=None):
 
 
 @query.route("/spelling_checker", methods=["GET", "POST"])
+@swag_from("../docs/query/spelling_checker.yml")
 def spelling_checker(termlink=None):
     uri_raw=""
     uri=""
@@ -422,7 +423,9 @@ def spelling_checker(termlink=None):
             uri="<"+uri_raw+">"
 
     if not uri:
-        return render_template('spelling_checker.html')
+        return jsonify({
+          "message": "no term given"
+        }), HTTPStatus.BAD_REQUEST
     else:
         term, definition, enum, year, vnum=get_document(uri)
         index_uri=models.uris.index(uri_raw)
@@ -430,7 +433,11 @@ def spelling_checker(termlink=None):
         clean_definition=models.clean_documents[index_uri]
         results={}
         results[uri_raw]=[enum,year, vnum, term]
-        return render_template('spelling_checker.html',results=results, clean_definition=clean_definition, definition=definition)
+        return jsonify({
+          "results": results,
+          "clean_definition": clean_definition,
+          "definition": definition,
+        }), HTTPStatus.OK
 
 
 @query.route("/evolution_of_terms", methods=["GET", "POST"])
