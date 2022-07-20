@@ -441,6 +441,7 @@ def spelling_checker(termlink=None):
 
 
 @query.route("/evolution_of_terms", methods=["GET", "POST"])
+@swag_from("../docs/query/evolution_of_terms.yml")
 def evolution_of_terms(termlink=None):
     uri_raw=""
     uri=""
@@ -463,8 +464,9 @@ def evolution_of_terms(termlink=None):
             print("uri %s!!" %uri)
 
     if not uri:
-        print("not index uri!!")
-        return render_template('evolution_of_terms.html')
+        return jsonify({
+          "message": "no term given"
+        }), HTTPStatus.BAD_REQUEST
 
     else:
         term, definition, enum, year, vnum  =get_document(uri)
@@ -529,20 +531,27 @@ def evolution_of_terms(termlink=None):
         results_dic_sorted[r[0]]=r[1:]
 
     if len(topics_vis) >= 1:
-        fig1=models.topic_model.visualize_barchart(topics_vis, n_words=10)
-        bar_plot = fig1.to_json()
+        bar_plot=models.topic_model.visualize_barchart(topics_vis, n_words=10)
     else:
         bar_plot=None
     if len(topics_vis) >= 2:
-        fig2=models.topic_model.visualize_heatmap(topics_vis)
-        heatmap_plot = fig2.to_json()
+        heatmap_plot=models.topic_model.visualize_heatmap(topics_vis)
     else:
         heatmap_plot=None
 
-    return render_template('evolution_of_terms.html', results=results_dic_sorted,
-                                term=term, definition=definition, uri=uri_raw,
-                                enum=enum, year=year, vnum=vnum, t_name=t_name,
-                                bar_plot=bar_plot, heatmap_plot=heatmap_plot, t_sentiment=t_sentiment)
+    return jsonify({
+        "results": sanitize_results(results_dic_sorted),
+        "term": term,
+        "definition": definition,
+        "uri": uri_raw,
+        "enum": enum,
+        "year": year,
+        "vnum": vnum,
+        "topicName": t_name,
+        "bar_plot": figure_to_dict(bar_plot),
+        "heatmap_plot": figure_to_dict(heatmap_plot),
+        "topicSentiment": t_sentiment,
+    }), HTTPStatus.OK
 
 
 @query.route("/defoe_queries", methods=["GET", "POST"])
