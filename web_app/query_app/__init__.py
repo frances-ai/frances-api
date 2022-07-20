@@ -12,6 +12,8 @@ from .controller.query import query
 
 from .flask_config import DefaultFlaskConfig
 
+# from .json_encoder import PlotlyJSONEncoder
+
 def create_app(test_config=None):
     app = Flask(__name__, instance_relative_config=True)
     if test_config is None:
@@ -28,4 +30,5 @@ def create_app(test_config=None):
     # Register blueprints
     app.register_blueprint(auth)
     app.register_blueprint(query)
+    
     return app

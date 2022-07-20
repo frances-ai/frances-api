@@ -10,7 +10,7 @@ from sklearn.metrics.pairwise import cosine_similarity
 
 from .utils import calculating_similarity_text, get_topic_name, retrieving_similariy
 from .utils import plot_taxonomy_freq, preprocess_lexicon, dict_defoe_queries, read_results
-from .utils import pagination_to_dict, sanitize_results
+from .utils import pagination_to_dict, sanitize_results, figure_to_dict
 
 import os, yaml
 import pickle
@@ -82,13 +82,11 @@ def term_search(termlink=None):
         except:
              pass
     if len(topics_vis) >= 1:
-        fig1=models.topic_model.visualize_barchart(topics_vis, n_words=10)
-        bar_plot = fig1.to_json()
+        bar_plot=models.topic_model.visualize_barchart(topics_vis, n_words=10)
     else:
         bar_plot=None
     if len(topics_vis) >= 2:
-        fig2=models.topic_model.visualize_heatmap(topics_vis)
-        heatmap_plot = fig2.to_json()
+        heatmap_plot=models.topic_model.visualize_heatmap(topics_vis)
     else:
         heatmap_plot=None
 
@@ -105,11 +103,9 @@ def term_search(termlink=None):
         "pagination": pagination_to_dict(pagination),
         "headers": headers,
         "term": term,
+        "bar_plot": figure_to_dict(bar_plot),
+        "heatmap_plot": figure_to_dict(heatmap_plot),
     }), HTTPStatus.OK
-    # return TermSearchResponse(
-    #   # bar_plot=bar_plot,
-    #   # heatmap_plot=heatmap_plot,
-    # ).encode()
 
 
 @query.route("/eb_details",  methods=['POST'])
@@ -291,16 +287,13 @@ def similar_terms(termlink=None):
         #if len(r_similar_index)==0:
         results, topics_vis=calculating_similarity_text(definition,models.text_embeddings, models.model, models.terms_info, models.documents, models.uris, models.topics_names, models.topics, models.sentiment_terms, index_uri)
     if len(topics_vis) >= 1:
-        fig1=models.topic_model.visualize_barchart(topics_vis, n_words=10)
-        bar_plot = fig1.to_json()
+        bar_plot=models.topic_model.visualize_barchart(topics_vis, n_words=10)
     if len(topics_vis) >= 1:
-        fig1=models.topic_model.visualize_barchart(topics_vis, n_words=10)
-        bar_plot = fig1.to_json()
+        bar_plot=models.topic_model.visualize_barchart(topics_vis, n_words=10)
     else:
         bar_plot=None
     if len(topics_vis) >= 2:
-        fig2=models.topic_model.visualize_heatmap(topics_vis)
-        heatmap_plot = fig2.to_json()
+        heatmap_plot=models.topic_model.visualize_heatmap(topics_vis)
     else:
         heatmap_plot=None
 
@@ -319,8 +312,8 @@ def similar_terms(termlink=None):
         return jsonify({
             "results": results_for_render,
             "pagination": pagination_to_dict(pagination),
-            # "bar_plot": bar_plot,
-            # "heatmap_plot": heatmap_plot,
+            "bar_plot": figure_to_dict(bar_plot),
+            "heatmap_plot": figure_to_dict(heatmap_plot),
         }), HTTPStatus.OK
     else:
         return jsonify({
@@ -334,8 +327,8 @@ def similar_terms(termlink=None):
             "vnum": vnum,
             "topicName": t_name,
             "topicSentiment": t_sentiment,
-            # "bar_plot": bar_plot,
-            # "heatmap_plot": heatmap_plot,
+            "bar_plot": figure_to_dict(bar_plot),
+            "heatmap_plot": figure_to_dict(heatmap_plot),
         }), HTTPStatus.OK
 
 
