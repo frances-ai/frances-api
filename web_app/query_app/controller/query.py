@@ -333,6 +333,7 @@ def similar_terms(termlink=None):
 
 
 @query.route("/topic_modelling", methods=["GET", "POST"])
+@swag_from("../docs/query/topic_modelling.yml")
 def topic_modelling(topic_name=None):
     topic_name  = request.args.get('topic_name', None)
     num_topics=len(models.t_names)-2
@@ -357,7 +358,10 @@ def topic_modelling(topic_name=None):
     if not topic_name:
          topic_name=session.get('topic_name')
     if not topic_name:
-        return render_template('topic_modelling.html', num_topics=num_topics)
+        return jsonify({
+            "num_topics": num_topics,
+        }), HTTPStatus.OK
+    
     indices = [i for i, x in enumerate(models.topics_names) if x == topic_name]
     results={}
     for t_i in indices:
@@ -373,8 +377,7 @@ def topic_modelling(topic_name=None):
         results[models.uris[t_i]]=[models.terms_info[t_i][1],models.terms_info[t_i][2], models.terms_info[t_i][4], models.terms_info[t_i][0], models.documents[t_i], sentiment]
     num_results=len(indices)
     first_topic=models.topics[indices[0]]
-    fig1=models.topic_model.visualize_barchart([first_topic], n_words=10)
-    bar_plot = fig1.to_json()
+    bar_plot=models.topic_model.visualize_barchart([first_topic], n_words=10)
 
     #### Pagination ###
     page = int(request.args.get("page", 1))
@@ -382,12 +385,19 @@ def topic_modelling(topic_name=None):
     per_page = 10
     offset = (page-1) * per_page
     limit = offset+per_page
-    results_for_render=dict(islice(results.items(),offset, limit))
+    results = dict(islice(results.items(),offset, limit))
+    results_for_render = sanitize_results(results)
     pagination = Pagination(page=page, total=len(results), per_page=page_size, search=False)
     ##############
-    return render_template('topic_modelling.html', topic_name=topic_name,
-                                    results=results_for_render, pagination=pagination,
-                                    bar_plot=bar_plot, num_results=num_results, num_topics=num_topics)
+    
+    return jsonify({
+        "topic_name": topic_name,
+        "results": results_for_render,
+        "pagination": pagination_to_dict(pagination),
+        "bar_plot": figure_to_dict(bar_plot),
+        "num_results": num_results,
+        "num_topics": num_topics,
+    }), HTTPStatus.OK
 
 
 @query.route("/spelling_checker", methods=["GET", "POST"])
