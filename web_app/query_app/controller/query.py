@@ -10,7 +10,7 @@ from sklearn.metrics.pairwise import cosine_similarity
 
 from .utils import calculating_similarity_text, get_topic_name, retrieving_similariy
 from .utils import plot_taxonomy_freq, preprocess_lexicon, dict_defoe_queries, read_results
-from .utils import pagination_to_dict, sanitize_results
+from .utils import pagination_to_dict, sanitize_results, figure_to_dict
 
 import os, yaml
 import pickle
@@ -82,13 +82,11 @@ def term_search(termlink=None):
         except:
              pass
     if len(topics_vis) >= 1:
-        fig1=models.topic_model.visualize_barchart(topics_vis, n_words=10)
-        bar_plot = fig1.to_json()
+        bar_plot=models.topic_model.visualize_barchart(topics_vis, n_words=10)
     else:
         bar_plot=None
     if len(topics_vis) >= 2:
-        fig2=models.topic_model.visualize_heatmap(topics_vis)
-        heatmap_plot = fig2.to_json()
+        heatmap_plot=models.topic_model.visualize_heatmap(topics_vis)
     else:
         heatmap_plot=None
 
@@ -105,11 +103,9 @@ def term_search(termlink=None):
         "pagination": pagination_to_dict(pagination),
         "headers": headers,
         "term": term,
+        "bar_plot": figure_to_dict(bar_plot),
+        "heatmap_plot": figure_to_dict(heatmap_plot),
     }), HTTPStatus.OK
-    # return TermSearchResponse(
-    #   # bar_plot=bar_plot,
-    #   # heatmap_plot=heatmap_plot,
-    # ).encode()
 
 
 @query.route("/eb_details",  methods=['POST'])
@@ -291,16 +287,13 @@ def similar_terms(termlink=None):
         #if len(r_similar_index)==0:
         results, topics_vis=calculating_similarity_text(definition,models.text_embeddings, models.model, models.terms_info, models.documents, models.uris, models.topics_names, models.topics, models.sentiment_terms, index_uri)
     if len(topics_vis) >= 1:
-        fig1=models.topic_model.visualize_barchart(topics_vis, n_words=10)
-        bar_plot = fig1.to_json()
+        bar_plot=models.topic_model.visualize_barchart(topics_vis, n_words=10)
     if len(topics_vis) >= 1:
-        fig1=models.topic_model.visualize_barchart(topics_vis, n_words=10)
-        bar_plot = fig1.to_json()
+        bar_plot=models.topic_model.visualize_barchart(topics_vis, n_words=10)
     else:
         bar_plot=None
     if len(topics_vis) >= 2:
-        fig2=models.topic_model.visualize_heatmap(topics_vis)
-        heatmap_plot = fig2.to_json()
+        heatmap_plot=models.topic_model.visualize_heatmap(topics_vis)
     else:
         heatmap_plot=None
 
@@ -319,8 +312,8 @@ def similar_terms(termlink=None):
         return jsonify({
             "results": results_for_render,
             "pagination": pagination_to_dict(pagination),
-            # "bar_plot": bar_plot,
-            # "heatmap_plot": heatmap_plot,
+            "bar_plot": figure_to_dict(bar_plot),
+            "heatmap_plot": figure_to_dict(heatmap_plot),
         }), HTTPStatus.OK
     else:
         return jsonify({
@@ -334,12 +327,13 @@ def similar_terms(termlink=None):
             "vnum": vnum,
             "topicName": t_name,
             "topicSentiment": t_sentiment,
-            # "bar_plot": bar_plot,
-            # "heatmap_plot": heatmap_plot,
+            "bar_plot": figure_to_dict(bar_plot),
+            "heatmap_plot": figure_to_dict(heatmap_plot),
         }), HTTPStatus.OK
 
 
 @query.route("/topic_modelling", methods=["GET", "POST"])
+@swag_from("../docs/query/topic_modelling.yml")
 def topic_modelling(topic_name=None):
     topic_name  = request.args.get('topic_name', None)
     num_topics=len(models.t_names)-2
@@ -364,7 +358,10 @@ def topic_modelling(topic_name=None):
     if not topic_name:
          topic_name=session.get('topic_name')
     if not topic_name:
-        return render_template('topic_modelling.html', num_topics=num_topics)
+        return jsonify({
+            "num_topics": num_topics,
+        }), HTTPStatus.OK
+    
     indices = [i for i, x in enumerate(models.topics_names) if x == topic_name]
     results={}
     for t_i in indices:
@@ -380,8 +377,7 @@ def topic_modelling(topic_name=None):
         results[models.uris[t_i]]=[models.terms_info[t_i][1],models.terms_info[t_i][2], models.terms_info[t_i][4], models.terms_info[t_i][0], models.documents[t_i], sentiment]
     num_results=len(indices)
     first_topic=models.topics[indices[0]]
-    fig1=models.topic_model.visualize_barchart([first_topic], n_words=10)
-    bar_plot = fig1.to_json()
+    bar_plot=models.topic_model.visualize_barchart([first_topic], n_words=10)
 
     #### Pagination ###
     page = int(request.args.get("page", 1))
@@ -389,15 +385,23 @@ def topic_modelling(topic_name=None):
     per_page = 10
     offset = (page-1) * per_page
     limit = offset+per_page
-    results_for_render=dict(islice(results.items(),offset, limit))
+    results = dict(islice(results.items(),offset, limit))
+    results_for_render = sanitize_results(results)
     pagination = Pagination(page=page, total=len(results), per_page=page_size, search=False)
     ##############
-    return render_template('topic_modelling.html', topic_name=topic_name,
-                                    results=results_for_render, pagination=pagination,
-                                    bar_plot=bar_plot, num_results=num_results, num_topics=num_topics)
+    
+    return jsonify({
+        "topic_name": topic_name,
+        "results": results_for_render,
+        "pagination": pagination_to_dict(pagination),
+        "bar_plot": figure_to_dict(bar_plot),
+        "num_results": num_results,
+        "num_topics": num_topics,
+    }), HTTPStatus.OK
 
 
 @query.route("/spelling_checker", methods=["GET", "POST"])
+@swag_from("../docs/query/spelling_checker.yml")
 def spelling_checker(termlink=None):
     uri_raw=""
     uri=""
@@ -419,7 +423,9 @@ def spelling_checker(termlink=None):
             uri="<"+uri_raw+">"
 
     if not uri:
-        return render_template('spelling_checker.html')
+        return jsonify({
+          "message": "no term given"
+        }), HTTPStatus.BAD_REQUEST
     else:
         term, definition, enum, year, vnum=get_document(uri)
         index_uri=models.uris.index(uri_raw)
@@ -427,10 +433,15 @@ def spelling_checker(termlink=None):
         clean_definition=models.clean_documents[index_uri]
         results={}
         results[uri_raw]=[enum,year, vnum, term]
-        return render_template('spelling_checker.html',results=results, clean_definition=clean_definition, definition=definition)
+        return jsonify({
+          "results": results,
+          "clean_definition": clean_definition,
+          "definition": definition,
+        }), HTTPStatus.OK
 
 
 @query.route("/evolution_of_terms", methods=["GET", "POST"])
+@swag_from("../docs/query/evolution_of_terms.yml")
 def evolution_of_terms(termlink=None):
     uri_raw=""
     uri=""
@@ -453,8 +464,9 @@ def evolution_of_terms(termlink=None):
             print("uri %s!!" %uri)
 
     if not uri:
-        print("not index uri!!")
-        return render_template('evolution_of_terms.html')
+        return jsonify({
+          "message": "no term given"
+        }), HTTPStatus.BAD_REQUEST
 
     else:
         term, definition, enum, year, vnum  =get_document(uri)
@@ -519,20 +531,27 @@ def evolution_of_terms(termlink=None):
         results_dic_sorted[r[0]]=r[1:]
 
     if len(topics_vis) >= 1:
-        fig1=models.topic_model.visualize_barchart(topics_vis, n_words=10)
-        bar_plot = fig1.to_json()
+        bar_plot=models.topic_model.visualize_barchart(topics_vis, n_words=10)
     else:
         bar_plot=None
     if len(topics_vis) >= 2:
-        fig2=models.topic_model.visualize_heatmap(topics_vis)
-        heatmap_plot = fig2.to_json()
+        heatmap_plot=models.topic_model.visualize_heatmap(topics_vis)
     else:
         heatmap_plot=None
 
-    return render_template('evolution_of_terms.html', results=results_dic_sorted,
-                                term=term, definition=definition, uri=uri_raw,
-                                enum=enum, year=year, vnum=vnum, t_name=t_name,
-                                bar_plot=bar_plot, heatmap_plot=heatmap_plot, t_sentiment=t_sentiment)
+    return jsonify({
+        "results": sanitize_results(results_dic_sorted),
+        "term": term,
+        "definition": definition,
+        "uri": uri_raw,
+        "enum": enum,
+        "year": year,
+        "vnum": vnum,
+        "topicName": t_name,
+        "bar_plot": figure_to_dict(bar_plot),
+        "heatmap_plot": figure_to_dict(heatmap_plot),
+        "topicSentiment": t_sentiment,
+    }), HTTPStatus.OK
 
 
 @query.route("/defoe_queries", methods=["GET", "POST"])

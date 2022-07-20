@@ -1,0 +1,16 @@
+Topic Modelling
+---
+tags:
+  - Query
+parameters:
+  - in: formData
+    name: topic_name
+    type: string
+    description: The name of the topic to model.
+    required: false
+responses:
+  201:
+    description: Topic model data
+  400:
+    description: Invalid input
+

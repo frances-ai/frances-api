@@ -16,6 +16,7 @@ import pandas as pd
 import plotly.express as px
 
 import numpy as np
+import json
 
 ###
 def load_data(input_path_embed, file_name):
@@ -202,3 +203,10 @@ def sanitize_array(items):
       sanitized.append(value)
   return sanitized
 
+def figure_to_dict(fig):
+  if fig is None:
+    return None
+  # hack to get Figure as dict
+  str_data = fig.to_json()
+  dict_data = json.loads(str_data)
+  return dict_data
