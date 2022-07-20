@@ -4,6 +4,7 @@
 """Make the Flask app available."""
 from flasgger import Swagger
 from flask import Flask
+from flask_cors import CORS
 from flask_jwt_extended import JWTManager
 
 from .config_folder.swagger import swagger_config, template
@@ -11,6 +12,7 @@ from .controller.auth import auth
 from .controller.query import query
 
 from .flask_config import DefaultFlaskConfig
+
 
 def create_app(test_config=None):
     app = Flask(__name__, instance_relative_config=True)
@@ -28,4 +30,7 @@ def create_app(test_config=None):
     # Register blueprints
     app.register_blueprint(auth)
     app.register_blueprint(query)
+
+    # Enable CORS
+    CORS(app)
     return app

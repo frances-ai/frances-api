@@ -19,10 +19,8 @@ chart_studio
 plotly
 numba
 networkx
-pyyaml
 flask-jwt-extended
 flasgger
-flask_sqlalchemy
-sqlalchemy
 psycopg2
 validators
+flask_cors

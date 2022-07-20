@@ -11,15 +11,19 @@ parameters:
       type: object
       required:
         - email
-        - name
+        - first_name
+        - last_name
         - password
       properties:
         email:
           type: string
           example: damonyu@gmail.com
-        name:
+        first_name:
           type: string
-          example: Damon Yu
+          example: Damon
+        last_name:
+          type: string
+          example: Yu
         password:
           type: string
           format: password
@@ -32,5 +36,3 @@ responses:
 
   400:
     description: Invalid input
-
-

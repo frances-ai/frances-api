@@ -21,7 +21,7 @@ class DatabaseConfig:
         self.host = ""
         self.user = ""
         self.password = ""
-    
+
     @staticmethod
     def from_dict(vals):
         config = DatabaseConfig()
@@ -48,7 +48,7 @@ class Database:
         self.db.commit()
 
     def get_user_by_id(self, id):
-        sql = "SELECT UserId,FullName,Email,Password FROM Users WHERE UserID=%s;"
+        sql = "SELECT userId, firstName, lastName,email,password FROM Users WHERE UserID=%s;"
         cursor = self.db.cursor()
         cursor.execute(sql, (id,))
 
@@ -60,7 +60,7 @@ class Database:
         return User(*res)
 
     def get_user_by_email(self, email):
-        sql = "SELECT UserId,FullName,Email,Password FROM Users WHERE Email=%s;"
+        sql = "SELECT userId,firstName, lastName,email,password FROM Users WHERE Email=%s;"
         cursor = self.db.cursor()
         cursor.execute(sql, (email,))
 
@@ -72,8 +72,8 @@ class Database:
         return User(*res)
 
     def add_user(self, user):
-        sql = "INSERT INTO Users (UserId, FullName, Email, Password) VALUES (%s, %s, %s, %s);"
-        vals = (user.id, user.name, user.email, user.password)
+        sql = "INSERT INTO Users (userId, firstName, lastName, email, password) VALUES (%s, %s, %s, %s, %s);"
+        vals = (user.id, user.first_name, user.last_name, user.email, user.password)
 
         cursor = self.db.cursor()
         cursor.execute(sql, vals)
@@ -81,7 +81,7 @@ class Database:
         return
 
     def add_submission(self, sub):
-        sql = "INSERT INTO Submissions (submissionID, userID, FullName, result, error) VALUES (%s, %s, %s, %s, %s);"
+        sql = "INSERT INTO Submissions (submissionID, userID, submissionName, result, error) VALUES (%s, %s, %s, %s, %s);"
         vals = (sub.id, sub.userID, sub.name, sub.result, sub.error)
 
         cursor = self.db.cursor()
@@ -90,7 +90,7 @@ class Database:
         return
 
     def update_submission(self, sub):
-        sql = "UPDATE Submissions SET userID=%s, fullName=%s, result=%s, error=%s WHERE submissionID=%s;"
+        sql = "UPDATE Submissions SET userID=%s, submissionName=%s, result=%s, error=%s WHERE submissionID=%s;"
         vals = (sub.userID, sub.name, sub.result, sub.error, sub.id)
 
         cursor = self.db.cursor()
@@ -99,7 +99,7 @@ class Database:
         return
 
     def get_submissions(self, userID):
-        sql = "SELECT submissionID, userID, fullName, result, error, submitTime FROM Submissions WHERE userID=%s;"
+        sql = "SELECT submissionID, userID, submissionName, result, error, submitTime FROM Submissions WHERE userID=%s;"
         cursor = self.db.cursor()
         cursor.execute(sql, (userID,))
 
@@ -119,16 +119,17 @@ db = Database(DATABASE_CONFIG)
 
 
 class User:
-    def __init__(self, id, name, email, password):
+    def __init__(self, id, first_name, last_name, email, password):
         self.id = id
-        self.name = name
+        self.first_name = first_name
+        self.last_name = last_name
         self.email = email
         self.password = password
 
     @staticmethod
-    def create_new(name, email, password):
-        id = uuid.uuid5(uuid.NAMESPACE_URL, namespace + name + str(time.time()))
-        return User(id, name, email, password)
+    def create_new(first_name, last_name, email, password):
+        id = uuid.uuid5(uuid.NAMESPACE_URL, namespace + first_name + str(time.time()))
+        return User(id, first_name, last_name, email, password)
 
 
 class Submission:
@@ -159,7 +160,7 @@ if __name__ == "__main__":
 
     u = db.get_user_by_id(user.id)
     print("user")
-    print(u.name)
+    print(u.first_name)
     print(u.email)
     print()
 

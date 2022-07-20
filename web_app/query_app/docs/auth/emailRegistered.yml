@@ -1,0 +1,21 @@
+Check if Email has been registered
+---
+tags:
+  - Authentication
+parameters:
+  - name: email
+    description: Testing email
+    in: body
+    required: true
+    schema:
+      type: object
+      required:
+        - email
+      properties:
+        email:
+          type: string
+          example: damonyu@gmail.com
+
+responses:
+  200:
+    description: True if Email has been registered, false otherwise
