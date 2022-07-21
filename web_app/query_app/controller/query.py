@@ -26,7 +26,7 @@ from werkzeug.datastructures import FileStorage
 from io import BytesIO
 import base64
 
-from ..resolver import get_models
+from ..resolver import get_models, get_defoe
 from flasgger import swag_from
 
 ######### PATHS
@@ -554,97 +554,128 @@ def evolution_of_terms(termlink=None):
     }), HTTPStatus.OK
 
 
-@query.route("/defoe_queries", methods=["GET", "POST"])
+@query.route("/defoe_submit", methods=["POST"])
+@swag_from("../docs/query/defoe_submit.yml")
 def defoe_queries():
     defoe_q=dict_defoe_queries()
+    defoe_selection=request.form.get('defoe_selection')
+    
+    # build defoe config from request
+    config={}
+    config["preprocess"]=request.form.get('preprocess')
+    config["target_sentences"]= request.form.get('target_sentences').split(",")
+    config["target_filter"] = request.form.get('target_filter')
+    config["window"] = request.form.get('window')
+    config["start_year"]= request.form.get('start_year')
+    config["end_year"]= request.form.get('end_year')
+    config["os_type"]="os"
+    config["hit_count"] = request.form.get('hit_count')
 
-    if request.method == "POST":
+    # if result not saved, run new query
+    if "normalized" not in defoe_selection:
+        UPLOAD_FOLDER = "/home/wilfridaskins/Desktop/Dissertation/frances-ai/frances-api/web_app/query_app/upload_folder"
+        
+        file = request.files['file']
+        filename = secure_filename(file.filename)
+        file.save(os.path.join(app.config['UPLOAD_FOLDER'], filename))
+        config["data"] = os.path.join(app.config['UPLOAD_FOLDER'], filename)
 
-        config={}
-        defoe_selection=request.form.get('defoe_selection')
-        print("defoe_selection is %s" %defoe_selection)
-        config["preprocess"]=request.form.get('preprocess')
-        config["target_sentences"]= request.form.get('target_sentences').split(",")
-        config["target_filter"] = request.form.get('target_filter')
-        config["window"] = request.form.get('window')
-        config["defoe_path"]= "/Users/rf208/Research/NLS-Fellowship/work/defoe/"
-        config["start_year"]= request.form.get('start_year')
-        config["end_year"]= request.form.get('end_year')
-        config["os_type"]="os"
-        config["hit_count"] = request.form.get('hit_count')
+        submit_id = get_defoe().submit_job(
+          job_id = "job-1234",
+          model_name = "sparql",
+          query_name = "defoe.sparql.queries." + defoe_selection,
+          query_config = config,
+          # todo move to config
+          data_endpoint = "http://localhost:3030/total_eb/sparql",
+        )
+        return jsonify({
+          "success": True,
+          "id": submit_id,
+        })
+    
+    RESULTS_FOLDER = "/home/wilfridaskins/Desktop/Dissertation/frances-ai/frances-api/web_app/query_app/defoe_results"
+    # pre-computed query
+    results_file=os.path.join(RESULTS_FOLDER, defoe_selection+".yml")
+    results=read_results(results_file)
 
-        if "normalized" not in defoe_selection:
-            file= request.files['file']
-            filename = secure_filename(file.filename)
-            file.save(os.path.join(app.config['UPLOAD_FOLDER'], filename))
-            config["data"]=os.path.join(app.config['UPLOAD_FOLDER'], filename)
+    #### creating config_defoe ####
+    config_defoe={}
+    if "terms" in defoe_selection or "uris" in defoe_selection:
+        config_defoe["preprocess"]= config["preprocess"]
+        config_defoe["target_sentences"]= config["target_sentences"]
+        config_defoe["target_filter"] = config["target_filter"]
+        config_defoe["start_year"]= config["start_year"]
+        config_defoe["end_year"]= config["end_year"]
+        if "snippet" in defoe_selection:
+            config_defoe["window"] = config["window"]
+    elif "frequency" in defoe_selection:
+        config_defoe["preprocess"]= config["preprocess"]
+        config_defoe["target_sentences"]= config["target_sentences"]
+        config_defoe["target_filter"] = config["target_filter"]
+        config_defoe["start_year"]= config["start_year"]
+        config_defoe["end_year"]= config["end_year"]
+        config_defoe["hit_count"] = config["hit_count"]
+
+    if "terms" in defoe_selection:
+        results_uris=results["terms_uris"]
+        return jsonify({
+          "defoe_q": defoe_q,
+          "flag": 1,
+          "results": results,
+          "results_uris": results_uris,
+          "defoe_selection": defoe_selection,
+          "config": config_defoe,
+        })
+
+    elif "uris" in defoe_selection or "normalized" in defoe_selection:
+        return jsonify({
+          "defoe_q": defoe_q,
+          "flag": 1,
+          "results": results,
+          "defoe_selection": defoe_selection,
+          "config": config_defoe,
+        })
+
+    preprocess= request.args.get('preprocess', None)
+    p_lexicon = preprocess_lexicon(config["data"], config["preprocess"])
+
+    #### Read Normalized data
+    norm_file=os.path.join(app.config['RESULTS_FOLDER'], "publication_normalized.yml")
+    ####
+    norm_publication=read_results(norm_file)
+    taxonomy=p_lexicon
+    line_f_plot, line_n_f_plot=plot_taxonomy_freq(taxonomy, results, norm_publication)
+    return jsonify({
+      "defoe_q": defoe_q,
+      "flag": 1,
+      "results": results,
+      "defoe_selection": defoe_selection,
+      "line_f_plot": figure_to_dict(line_f_plot),
+      "line_n_f_plot": figure_to_dict(line_n_f_plot),
+      "config": config_defoe,
+    })
 
 
-
-        config_file=os.path.join(app.config['CONFIG_FOLDER'], "config_frances_web.yml")
-        with open(config_file, 'w') as outfile:
-            yaml.dump(config, outfile, default_flow_style=False)
-
-        results_file=os.path.join(app.config['RESULTS_FOLDER'], defoe_selection+".yml")
-
-        if "normalized" not in defoe_selection:
-            print("spark-submit")
-            cwd = os.getcwd()
-            os.chdir(defoe_path)
-            cmd="spark-submit --driver-memory 12g --py-files defoe.zip defoe/run_query.py sparql_data.txt sparql defoe.sparql.queries."+ defoe_selection+" "+ config_file  +" -r " + results_file +" -n 34"
-            #os.system(cmd)
-            os.chdir(cwd)
-
-        print("finished with apache sark submission, results in -- %s" % results_file)
-        results=read_results(results_file)
-
-        #### creating config_defoe ####
-        config_defoe={}
-        if "terms" in defoe_selection or "uris" in defoe_selection:
-            config_defoe["preprocess"]= config["preprocess"]
-            config_defoe["target_sentences"]= config["target_sentences"]
-            config_defoe["target_filter"] = config["target_filter"]
-            config_defoe["start_year"]= config["start_year"]
-            config_defoe["end_year"]= config["end_year"]
-            if "snippet" in defoe_selection:
-                config_defoe["window"] = config["window"]
-        elif "frequency" in defoe_selection:
-            config_defoe["preprocess"]= config["preprocess"]
-            config_defoe["target_sentences"]= config["target_sentences"]
-            config_defoe["target_filter"] = config["target_filter"]
-            config_defoe["start_year"]= config["start_year"]
-            config_defoe["end_year"]= config["end_year"]
-            config_defoe["hit_count"] = config["hit_count"]
+@query.route("/defoe_list", methods=["GET"])
+@swag_from("../docs/query/defoe_list.yml")
+def defoe_status():
+    return jsonify({
+      "defoe_q": dict_defoe_queries(),
+    })
 
 
+@query.route("/defoe_status", methods=["GET"])
+@swag_from("../docs/query/defoe_status.yml")
+def defoe_status():
+    job_id = request.args.get('id')
+    job = get_defoe().get_status(job_id)
+    return jsonify({
+      "id": job_id,
+      "result": job.result,
+      "error": job.error,
+      "done": job.done,
+    })
 
-        if "terms" in defoe_selection:
-            results_uris=results["terms_uris"]
-            print("Sending results")
-            return render_template('defoe_results.html', defoe_q=defoe_q, flag=1, results=results, results_uris=results_uris,  defoe_selection=defoe_selection, config=config_defoe)
-
-        elif "uris" in defoe_selection or "normalized" in defoe_selection:
-
-            print("Sending results")
-            return render_template('defoe_results.html', defoe_q=defoe_q, flag=1, results=results, defoe_selection=defoe_selection, config=config_defoe)
-        else:
-            preprocess= request.args.get('preprocess', None)
-            p_lexicon = preprocess_lexicon(config["data"], config["preprocess"])
-
-            #### Read Normalized data
-            norm_file=os.path.join(app.config['RESULTS_FOLDER'], "publication_normalized.yml")
-            ####
-            norm_publication=read_results(norm_file)
-            taxonomy=p_lexicon
-            plot_f, plot_n_f=plot_taxonomy_freq(taxonomy, results, norm_publication)
-            #### only for ploty figures
-            line_f_plot = plot_f.to_json()
-            line_n_f_plot = plot_n_f.to_json()
-            ####
-            print("Sending results")
-            return render_template('defoe_results.html', defoe_q=defoe_q, flag=1, results=results, defoe_selection=defoe_selection, line_f_plot=line_f_plot, line_n_f_plot=line_n_f_plot, config=config_defoe)
-
-    return render_template('defoe.html', defoe_q=defoe_q)
 
 @query.route("/download", methods=['GET'])
 def download(defoe_selection=None):

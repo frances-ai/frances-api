@@ -1,0 +1,59 @@
+Defoe Submit
+---
+tags:
+  - Query
+parameters:
+  - in: formData
+    name: defoe_selection
+    type: string
+    description: The name of the query to run.
+    required: false
+  - in: formData
+    name: preprocess
+    type: string
+    description: Either none, normalize, normalize_num, lemmatize or stem.
+    required: false
+  - in: formData
+    name: target_sentences
+    type: string
+    description: Words/sentances to find, seperated by commas.
+    required: false
+  - in: formData
+    name: target_filter
+    type: string
+    description: Either "and" or "or". This is the operator to be applied between target words.
+    required: false
+  - in: formData
+    name: window
+    type: string
+    description: (purpose unclear) Snippet window value. Default value of 10.
+    default: 10
+    required: false
+  - in: formData
+    name: start_year
+    type: string
+    description: The first year of results to return.
+    required: false
+    example: 1771
+  - in: formData
+    name: end_year
+    type: string
+    description: The last year of results to return.
+    required: false
+    example: 1771
+  - in: formData
+    name: hit_count
+    type: string
+    description: Either term or word.
+    required: false
+  - in: formData
+    name: file
+    type: file
+    description: Should contain a line per keyword or keysentance for this query.
+    required: false
+responses:
+  201:
+    description: Defoe query ID
+  400:
+    description: Invalid input
+
