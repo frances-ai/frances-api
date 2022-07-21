@@ -66,7 +66,7 @@ def register():
 
     return jsonify({
         "user": {
-            "first_name:": first_name,
+            "first_name": first_name,
             "last_name": last_name,
             "email": email
         }
@@ -141,8 +141,8 @@ def profile():
     user = db.get_user_by_id(user_id)
     return jsonify({
         "user": {
-            "first_name:": user.first_name,
-            "last_name:": user.last_name,
+            "first_name": user.first_name,
+            "last_name": user.last_name,
             "email": user.email
         }
     }), HTTPStatus.OK
