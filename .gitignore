@@ -3,3 +3,6 @@
 
 # Knowledge graph file
 /data/total_eb.ttl
+
+# Fuseki Volume
+/fuseki_data
