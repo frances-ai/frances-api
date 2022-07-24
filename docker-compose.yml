@@ -24,11 +24,6 @@ services:
         limits:
           cpus: "2"
           memory: 6gb
-    # from https://github.com/stain/jena-docker/issues/47#issuecomment-702082187
-    volumes:
-      - ./fuseki_data:/fuseki
-    command: bash -c "find .. -name \tdb.lock -type f -delete &&  ./fuseki-server"
-
   # spark:
   #   image: bitnami/spark
   #   environment:
