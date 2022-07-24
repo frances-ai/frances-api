@@ -4,8 +4,8 @@ import requests
 
 from .db import Database, DatabaseConfig
 
-from defoe.config import DefoeConfig
-from defoe.service import DefoeService
+from defoe_lib.config import DefoeConfig
+from defoe_lib.service import DefoeService
 
 from .controller.models import ModelsConfig, ModelsRepository
 

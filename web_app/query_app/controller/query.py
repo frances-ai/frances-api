@@ -29,9 +29,6 @@ import base64
 from ..resolver import get_models, get_defoe
 from flasgger import swag_from
 
-######### PATHS
-defoe_path="/../../defoe"
-
 query = Blueprint("query", __name__, url_prefix="/api/v1/query")
 models = get_models()
 
@@ -577,20 +574,20 @@ def defoe_queries():
         
         file = request.files['file']
         filename = secure_filename(file.filename)
-        file.save(os.path.join(app.config['UPLOAD_FOLDER'], filename))
-        config["data"] = os.path.join(app.config['UPLOAD_FOLDER'], filename)
+        file.save(os.path.join(UPLOAD_FOLDER, filename))
+        config["data"] = os.path.join(UPLOAD_FOLDER, filename)
 
-        submit_id = get_defoe().submit_job(
+        job = get_defoe().submit_job(
           job_id = "job-1234",
           model_name = "sparql",
-          query_name = "defoe.sparql.queries." + defoe_selection,
+          query_name = defoe_selection,
           query_config = config,
           # todo move to config
           data_endpoint = "http://localhost:3030/total_eb/sparql",
         )
         return jsonify({
           "success": True,
-          "id": submit_id,
+          "id": job.id,
         })
     
     RESULTS_FOLDER = "/home/wilfridaskins/Desktop/Dissertation/frances-ai/frances-api/web_app/query_app/defoe_results"
@@ -640,7 +637,7 @@ def defoe_queries():
     p_lexicon = preprocess_lexicon(config["data"], config["preprocess"])
 
     #### Read Normalized data
-    norm_file=os.path.join(app.config['RESULTS_FOLDER'], "publication_normalized.yml")
+    norm_file=os.path.join(RESULTS_FOLDER, "publication_normalized.yml")
     ####
     norm_publication=read_results(norm_file)
     taxonomy=p_lexicon
@@ -658,7 +655,7 @@ def defoe_queries():
 
 @query.route("/defoe_list", methods=["GET"])
 @swag_from("../docs/query/defoe_list.yml")
-def defoe_status():
+def defoe_list():
     return jsonify({
       "defoe_q": dict_defoe_queries(),
     })
@@ -690,6 +687,7 @@ def download(defoe_selection=None):
     zip_file=os.path.join(app.config['RESULTS_FOLDER'], zip_file)
     return send_file(zip_file, as_attachment=True)
 
+
 @query.route("/visualize_freq", methods=['GET'])
 def visualize_freq(defoe_selection=None):
     defoe_selection = request.args.get('defoe_selection', None)
@@ -702,8 +700,6 @@ def visualize_freq(defoe_selection=None):
 
     #### Read Results File
     results=read_results(results_file)
-
-
 
     #### Read Normalized data
     norm_file=os.path.join(app.config['RESULTS_FOLDER'], "publication_normalized.yml")

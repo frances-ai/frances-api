@@ -8,11 +8,13 @@ parameters:
     type: string
     description: The name of the query to run.
     required: false
+    default: frequency_keysearch_by_year
   - in: formData
     name: preprocess
     type: string
     description: Either none, normalize, normalize_num, lemmatize or stem.
     required: false
+    default: none
   - in: formData
     name: target_sentences
     type: string
@@ -23,6 +25,7 @@ parameters:
     type: string
     description: Either "and" or "or". This is the operator to be applied between target words.
     required: false
+    default: and
   - in: formData
     name: window
     type: string
@@ -34,13 +37,13 @@ parameters:
     type: string
     description: The first year of results to return.
     required: false
-    example: 1771
+    default: 1771
   - in: formData
     name: end_year
     type: string
     description: The last year of results to return.
     required: false
-    example: 1771
+    default: 1882
   - in: formData
     name: hit_count
     type: string
