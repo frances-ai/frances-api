@@ -203,8 +203,8 @@ def similar_terms(termlink=None):
         session['uri'] = uri
         session["data_similar"] = ""
 
-    elif 'resource_uri' in request.form:
-        data_similar=request.form.get('resource_uri')
+    elif 'resource_uri' in request.json:
+        data_similar=request.json.get('resource_uri')
         if "https://" in data_similar or "w3id" in data_similar:
             uri_raw=data_similar.strip().replace("<","").replace(">","")
         elif data_similar == "":
@@ -294,7 +294,7 @@ def similar_terms(termlink=None):
         heatmap_plot=None
 
     #### Pagination ###
-    page = int(request.args.get("page", 1))
+    page = int(request.json.get("page", 1))
     page_size=10
     per_page = 10
     offset = (page-1) * per_page
