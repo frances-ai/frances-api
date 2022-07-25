@@ -2,53 +2,45 @@ Defoe Submit
 ---
 tags:
   - Query
+consumes:
+  - application/json
 parameters:
-  - in: formData
-    name: defoe_selection
-    type: string
-    description: The name of the query to run.
-    required: false
-    default: frequency_keysearch_by_year
-  - in: formData
-    name: preprocess
-    type: string
-    description: Either none, normalize, normalize_num, lemmatize or stem.
-    required: false
-    default: none
-  - in: formData
-    name: target_sentences
-    type: string
-    description: Words/sentances to find, seperated by commas.
-    required: false
-  - in: formData
-    name: target_filter
-    type: string
-    description: Either "and" or "or". This is the operator to be applied between target words.
-    required: false
-    default: and
-  - in: formData
-    name: window
-    type: string
-    description: (purpose unclear) Snippet window value. Default value of 10.
-    default: 10
-    required: false
-  - in: formData
-    name: start_year
-    type: string
-    description: The first year of results to return.
-    required: false
-    default: 1771
-  - in: formData
-    name: end_year
-    type: string
-    description: The last year of results to return.
-    required: false
-    default: 1882
-  - in: formData
-    name: hit_count
-    type: string
-    description: Either term or word.
-    required: false
+  - in: body
+    name: payload
+    schema:
+      type: object
+      properties:
+        defoe_selection:
+          type: string
+          example: frequency_keysearch_by_year
+          description: The name of the query to run.
+        preprocess:
+          type: string
+          description: Either none, normalize, normalize_num, lemmatize or stem.
+          example: none
+        target_sentences:
+          type: string
+          description: Words/sentances to find, seperated by commas.
+        target_filter:
+          type: string
+          description: Either "and" or "or". This is the operator to be applied between target words.
+          example: and
+        window:
+          type: string
+          description: (purpose unclear) Snippet window value. Default value of 10.
+          example: 10
+        start_year:
+          type: string
+          description: The first year of results to return.
+          example: 1771
+        end_year:
+          type: string
+          description: The last year of results to return.
+          example: 1882
+        hit_count:
+          type: string
+          description: Either term or word.
+          example: word
   - in: formData
     name: file
     type: file

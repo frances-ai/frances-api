@@ -554,21 +554,22 @@ def evolution_of_terms(termlink=None):
 @swag_from("../docs/query/defoe_submit.yml")
 def defoe_queries():
     defoe_q=dict_defoe_queries()
-    defoe_selection=request.form.get('defoe_selection')
+    defoe_selection=request.json.get('defoe_selection')
     
     # build defoe config from request
     config={}
-    config["preprocess"]=request.form.get('preprocess')
-    config["target_sentences"]= request.form.get('target_sentences').split(",")
-    config["target_filter"] = request.form.get('target_filter')
-    config["window"] = request.form.get('window')
-    config["start_year"]= request.form.get('start_year')
-    config["end_year"]= request.form.get('end_year')
+    config["preprocess"]=request.json.get('preprocess')
+    config["target_sentences"]= request.json.get('target_sentences').split(",")
+    config["target_filter"] = request.json.get('target_filter')
+    config["window"] = request.json.get('window')
+    config["start_year"]= request.json.get('start_year')
+    config["end_year"]= request.json.get('end_year')
     config["os_type"]="os"
-    config["hit_count"] = request.form.get('hit_count')
+    config["hit_count"] = request.json.get('hit_count')
 
     # if result not saved, run new query
     if "normalized" not in defoe_selection:
+        # todo move to config
         UPLOAD_FOLDER = "/home/wilfridaskins/Desktop/Dissertation/frances-ai/frances-api/web_app/query_app/upload_folder"
         
         file = request.files['file']
@@ -588,7 +589,7 @@ def defoe_queries():
           "success": True,
           "id": job.id,
         })
-    
+    # todo move to config
     RESULTS_FOLDER = "/home/wilfridaskins/Desktop/Dissertation/frances-ai/frances-api/web_app/query_app/defoe_results"
     # pre-computed query
     results_file=os.path.join(RESULTS_FOLDER, defoe_selection+".yml")
@@ -632,7 +633,7 @@ def defoe_queries():
           "config": config_defoe,
         })
 
-    preprocess= request.args.get('preprocess', None)
+    preprocess= request.json.get('preprocess', None)
     p_lexicon = preprocess_lexicon(config["data"], config["preprocess"])
 
     #### Read Normalized data
