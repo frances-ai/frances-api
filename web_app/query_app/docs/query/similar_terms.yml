@@ -11,6 +11,7 @@ parameters:
         resource_uri:
           type: string
           description: The URI of the resource to query.
+          example: https://w3id.org/eb/i/Article/9929192893804340_144850368_WOMAN_0
         page:
           type: integer
           description: The results page to show.
