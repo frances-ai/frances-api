@@ -108,9 +108,9 @@ def term_search(termlink=None):
 @swag_from("../docs/query/eb_details.yml")
 def eb_details():
     edList=get_editions()
-    if 'edition_selection' in request.form and 'volume_selection' in request.form:
-        ed_raw=request.form.get('edition_selection')
-        vol_raw=request.form.get('volume_selection')
+    if 'edition_selection' in request.json and 'volume_selection' in request.json:
+        ed_raw=request.json.get('edition_selection')
+        vol_raw=request.json.get('volume_selection')
         if vol_raw !="" and ed_raw !="":
             ed_uri="<"+ed_raw+">"
             ed_r=get_editions_details(ed_uri)
