@@ -3,11 +3,15 @@ Spelling checker
 tags:
   - Query
 parameters:
-  - in: formData
-    name: resource_uri
-    type: string
-    description: The URI of the resource to spell check.
-    required: false
+  - in: body
+    name: payload
+    schema:
+      type: object
+      properties:
+        resource_uri:
+          type: string
+          description: The URI of the resource to spell check.
+          example: https://w3id.org/eb/i/Article/9929192893804340_144850368_WOMAN_0
   - in: query
     name: termlink
     type: string
