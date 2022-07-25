@@ -449,8 +449,8 @@ def evolution_of_terms(termlink=None):
         uri="<https://w3id.org/eb/i/"+termtype+"/"+termlink+">"
         uri_raw=uri.replace("<","").replace(">","")
 
-    elif 'resource_uri' in request.form:
-        uri_checker=request.form.get('resource_uri')
+    elif 'resource_uri' in request.json:
+        uri_checker=request.json.get('resource_uri')
         if "https://" in uri_checker or "w3id" in uri_checker:
             uri_raw=uri_checker.strip().replace("<","").replace(">","")
             uri="<"+uri_raw+">"
