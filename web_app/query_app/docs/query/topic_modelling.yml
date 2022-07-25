@@ -3,11 +3,19 @@ Topic Modelling
 tags:
   - Query
 parameters:
-  - in: formData
-    name: topic_name
-    type: string
-    description: The name of the topic to model.
-    required: false
+  - in: body
+    name: payload
+    schema:
+      type: object
+      properties:
+        topic_name:
+          type: string
+          description: The name of the topic to model.
+          example: 0_hindustan_of_hindustan_hindustan_in_district
+        page:
+          type: integer
+          description: The results page to show.
+          example: 1
 responses:
   201:
     description: Topic model data

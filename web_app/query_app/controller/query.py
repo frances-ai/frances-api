@@ -334,8 +334,8 @@ def topic_modelling(topic_name=None):
     topic_name  = request.args.get('topic_name', None)
     num_topics=len(models.t_names)-2
     if topic_name == None:
-        if 'topic_name' in request.form:
-            topic_name=request.form.get('topic_name')
+        if 'topic_name' in request.json:
+            topic_name=request.json.get('topic_name')
             if topic_name=="":
                 topic_name="0_hindustan_of_hindustan_hindustan_in_district"
             else:
@@ -376,7 +376,7 @@ def topic_modelling(topic_name=None):
     bar_plot=models.topic_model.visualize_barchart([first_topic], n_words=10)
 
     #### Pagination ###
-    page = int(request.args.get("page", 1))
+    page = int(request.json.get("page", 1))
     page_size=10
     per_page = 10
     offset = (page-1) * per_page
