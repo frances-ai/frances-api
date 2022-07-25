@@ -38,9 +38,8 @@ models = get_models()
 @swag_from("../docs/query/term_search.yml")
 def term_search(termlink=None):
     if request.method == "POST":
-        if "search" in request.form:
-            term = request.form["search"]
-        else:
+        term = request.json.get("search")
+        if term == "":
             term = "AABAM"
         term=term.upper()
         session['term'] = term
@@ -87,7 +86,7 @@ def term_search(termlink=None):
     else:
         heatmap_plot=None
 
-    page = int(request.args.get("page", 1))
+    page = int(request.json.get("page", 1))
     page_size=2
     per_page = 2
     offset = (page-1) * per_page
