@@ -2,6 +2,8 @@ Evolution of terms
 ---
 tags:
   - Query
+consumes:
+  - application/json
 parameters:
   - in: body
     name: payload

@@ -2,6 +2,8 @@ Spelling checker
 ---
 tags:
   - Query
+consumes:
+  - application/json
 parameters:
   - in: body
     name: payload
