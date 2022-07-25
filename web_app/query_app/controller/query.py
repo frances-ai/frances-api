@@ -140,7 +140,7 @@ def eb_details():
 @query.route("/vol_details", methods=['POST'])
 @swag_from("../docs/query/vol_details.yml")
 def vol_details():
-    uri_raw=request.form.get('edition_selection')
+    uri_raw=request.json.get('edition_selection')
     uri="<"+uri_raw+">"
     volList=get_volumes(uri)
     OutputArray = []
