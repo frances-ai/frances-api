@@ -3,11 +3,14 @@ Visualize Resource
 tags:
   - Query
 parameters:
-  - in: formData
-    name: resource_uri
-    type: string
-    description: The URI of the resource to visualize.
-    required: false
+  - in: body
+    name: payload
+    schema:
+      type: object
+      properties:
+        resource_uri:
+          type: string
+          description: The URI of the resource to visualize.
   - in: query
     name: termlink
     type: string

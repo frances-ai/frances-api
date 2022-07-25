@@ -154,8 +154,8 @@ def vol_details():
 @swag_from("../docs/query/visualization_resources.yml")
 def visualization_resources(termlink=None, termtype=None):
     if request.method == "POST":
-        if 'resource_uri' in request.form:
-            uri_raw=request.form.get('resource_uri').strip().replace("<","").replace(">","")
+        if 'resource_uri' in request.json:
+            uri_raw=request.json.get('resource_uri').strip().replace("<","").replace(">","")
             if uri_raw == "":
                 uri="<https://w3id.org/eb/i/Article/992277653804341_144133901_AABAM_0>"
             else:
