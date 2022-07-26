@@ -26,11 +26,12 @@ from werkzeug.datastructures import FileStorage
 from io import BytesIO
 import base64
 
-from ..resolver import get_models, get_defoe
+from ..resolver import get_models, get_defoe, get_files
 from flasgger import swag_from
 
 query = Blueprint("query", __name__, url_prefix="/api/v1/query")
 models = get_models()
+files = get_files()
 
 
 @query.route("/term_search/<string:termlink>",  methods=['GET'])
@@ -569,13 +570,10 @@ def defoe_queries():
 
     # if result not saved, run new query
     if "normalized" not in defoe_selection:
-        # todo move to config
-        UPLOAD_FOLDER = "/home/wilfridaskins/Desktop/Dissertation/frances-ai/frances-api/web_app/query_app/upload_folder"
-        
         file = request.files['file']
         filename = secure_filename(file.filename)
-        file.save(os.path.join(UPLOAD_FOLDER, filename))
-        config["data"] = os.path.join(UPLOAD_FOLDER, filename)
+        file.save(os.path.join(files.uploads_path, filename))
+        config["data"] = os.path.join(files.uploads_path, filename)
 
         job = get_defoe().submit_job(
           job_id = "job-1234",
@@ -589,10 +587,8 @@ def defoe_queries():
           "success": True,
           "id": job.id,
         })
-    # todo move to config
-    RESULTS_FOLDER = "/home/wilfridaskins/Desktop/Dissertation/frances-ai/frances-api/web_app/query_app/defoe_results"
     # pre-computed query
-    results_file=os.path.join(RESULTS_FOLDER, defoe_selection+".yml")
+    results_file=os.path.join(files.results_path, defoe_selection+".yml")
     results=read_results(results_file)
 
     #### creating config_defoe ####
@@ -637,7 +633,7 @@ def defoe_queries():
     p_lexicon = preprocess_lexicon(config["data"], config["preprocess"])
 
     #### Read Normalized data
-    norm_file=os.path.join(RESULTS_FOLDER, "publication_normalized.yml")
+    norm_file=os.path.join(files.results_path, "publication_normalized.yml")
     ####
     norm_publication=read_results(norm_file)
     taxonomy=p_lexicon
@@ -678,13 +674,13 @@ def defoe_status():
 def download(defoe_selection=None):
     defoe_selection = request.args.get('defoe_selection', None)
     cwd = os.getcwd()
-    os.chdir(app.config['RESULTS_FOLDER'])
+    os.chdir(files.results_path)
     results_file=defoe_selection+".yml"
     zip_file = defoe_selection+".zip"
     with ZipFile(zip_file, 'w') as zipf:
         zipf.write(results_file)
     os.chdir(cwd)
-    zip_file=os.path.join(app.config['RESULTS_FOLDER'], zip_file)
+    zip_file=os.path.join(files.results_path, zip_file)
     return send_file(zip_file, as_attachment=True)
 
 
@@ -692,7 +688,7 @@ def download(defoe_selection=None):
 def visualize_freq(defoe_selection=None):
     defoe_selection = request.args.get('defoe_selection', None)
     lexicon_file = request.args.get('lexicon_file', None)
-    results_file=os.path.join(app.config['RESULTS_FOLDER'], defoe_selection+".yml")
+    results_file=os.path.join(files.results_path, defoe_selection+".yml")
 
     preprocess= request.args.get('preprocess', None)
     p_lexicon = preprocess_lexicon(lexicon_file, preprocess)
@@ -702,7 +698,7 @@ def visualize_freq(defoe_selection=None):
     results=read_results(results_file)
 
     #### Read Normalized data
-    norm_file=os.path.join(app.config['RESULTS_FOLDER'], "publication_normalized.yml")
+    norm_file=os.path.join(files.results_path, "publication_normalized.yml")
     ####
     norm_publication=read_results(norm_file)
     print("---%s---" %norm_publication)

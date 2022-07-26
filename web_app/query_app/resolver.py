@@ -8,6 +8,7 @@ from defoe_lib.config import DefoeConfig
 from defoe_lib.service import DefoeService
 
 from .controller.models import ModelsConfig, ModelsRepository
+from .controller.files import FilesConfig
 
 CONSUL_VAR_NAME = "CONSUL_ADDRESS"
 CONSUL_PROTOCOL = "http://"
@@ -25,6 +26,7 @@ class QueryAppConfig:
     self.defoe = None
     self.models = None
     self.database = None
+    self.files = None
 
   @staticmethod
   def from_json(text):
@@ -33,6 +35,7 @@ class QueryAppConfig:
     config.defoe = DefoeConfig.from_dict(vals["defoe"])
     config.models = ModelsConfig.from_dict(vals["models"])
     config.database = DatabaseConfig.from_dict(vals["database"])
+    config.files = FilesConfig.from_dict(vals["files"])
     return config
 
 
@@ -71,9 +74,12 @@ def get_models():
   return models
 
 def get_database():
-  global databas
+  global database
   if database != None:
     return database
   database = Database(get_config().database)
   return database
 
+def get_files():
+  # this is only a config
+  return get_config().files
