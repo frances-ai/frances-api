@@ -2,12 +2,22 @@ Similar terms
 ---
 tags:
   - Query
+consumes:
+  - application/json
 parameters:
-  - in: formData
-    name: resource_uri
-    type: string
-    description: The URI of the resource to visualize.
-    required: false
+  - in: body
+    name: payload
+    schema:
+      type: object
+      properties:
+        resource_uri:
+          type: string
+          description: The URI of the resource to query.
+          example: https://w3id.org/eb/i/Article/9929192893804340_144850368_WOMAN_0
+        page:
+          type: integer
+          description: The results page to show.
+          example: 1
   - in: query
     name: termlink
     type: string

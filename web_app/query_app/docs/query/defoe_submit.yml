@@ -1,0 +1,52 @@
+Defoe Submit
+---
+tags:
+  - Query
+consumes:
+  - application/json
+parameters:
+  - in: body
+    name: payload
+    schema:
+      type: object
+      properties:
+        defoe_selection:
+          type: string
+          example: frequency_keysearch_by_year
+          description: The name of the query to run.
+        preprocess:
+          type: string
+          description: Either none, normalize, normalize_num, lemmatize or stem.
+          example: none
+        target_sentences:
+          type: string
+          description: Words/sentances to find, seperated by commas.
+        target_filter:
+          type: string
+          description: Either "and" or "or". This is the operator to be applied between target words.
+          example: and
+        window:
+          type: string
+          description: (purpose unclear) Snippet window value. Default value of 10.
+          example: 10
+        start_year:
+          type: string
+          description: The first year of results to return.
+          example: 1771
+        end_year:
+          type: string
+          description: The last year of results to return.
+          example: 1882
+        hit_count:
+          type: string
+          description: Either term or word.
+          example: word
+        file:
+          type: string
+          description: The ID of a file that was previously uploaded.
+responses:
+  201:
+    description: Defoe query ID
+  400:
+    description: Invalid input
+

@@ -2,17 +2,23 @@ Term Search
 ---
 tags:
   - Query
+consumes:
+  - application/json
 parameters:
   - in: path
     name: termlink
     type: string
     required: false
-  - in: formData
-    name: search
-    type: string
-    description: User should provide a search term.
-    required: false
-
+  - in: body
+    name: payload
+    schema:
+      type: object
+      required:
+        - search
+      properties:
+        search:
+          type: string
+          example: woman
 responses:
   201:
     description: Search results

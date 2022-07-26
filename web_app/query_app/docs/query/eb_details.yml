@@ -2,18 +2,20 @@ EB Details
 ---
 tags:
   - Query
+consumes:
+  - application/json
 parameters:
-  - in: formData
-    name: edition_selection
-    type: string
-    description: The edition to return details for.
-    required: false
-  - in: formData
-    name: volume_selection
-    type: string
-    description: The volume to return details for.
-    required: false
-
+  - in: body
+    name: payload
+    schema:
+      type: object
+      properties:
+        edition_selection:
+          type: string
+          description: The edition to return details for.
+        volume_selection:
+          type: string
+          description: The volume to return details for.
 responses:
   201:
     description: Edition details

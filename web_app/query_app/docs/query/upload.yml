@@ -1,0 +1,16 @@
+Upload
+---
+tags:
+  - Query
+parameters:
+  - in: formData
+    name: file
+    type: file
+    description: Should contain a line per keyword or keysentance for this query.
+    required: false
+responses:
+  201:
+    description: File ID
+  400:
+    description: Invalid input
+

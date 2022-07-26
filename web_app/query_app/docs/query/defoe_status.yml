@@ -1,0 +1,16 @@
+Defoe status
+---
+tags:
+  - Query
+parameters:
+  - in: query
+    name: id
+    type: string
+    description: The ID of the defoe job to get the status of.
+    required: true
+responses:
+  201:
+    description: Job status
+  400:
+    description: Invalid input
+

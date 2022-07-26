@@ -12,7 +12,7 @@ from .utils import calculating_similarity_text, get_topic_name, retrieving_simil
 from .utils import plot_taxonomy_freq, preprocess_lexicon, dict_defoe_queries, read_results
 from .utils import pagination_to_dict, sanitize_results, figure_to_dict
 
-import os, yaml
+import time, os, yaml
 import pickle
 from tqdm import tqdm
 from zipfile import *
@@ -26,14 +26,12 @@ from werkzeug.datastructures import FileStorage
 from io import BytesIO
 import base64
 
-from ..resolver import get_models
+from ..resolver import get_models, get_defoe, get_files
 from flasgger import swag_from
-
-######### PATHS
-defoe_path="/../../defoe"
 
 query = Blueprint("query", __name__, url_prefix="/api/v1/query")
 models = get_models()
+files = get_files()
 
 
 @query.route("/term_search/<string:termlink>",  methods=['GET'])
@@ -41,9 +39,8 @@ models = get_models()
 @swag_from("../docs/query/term_search.yml")
 def term_search(termlink=None):
     if request.method == "POST":
-        if "search" in request.form:
-            term = request.form["search"]
-        else:
+        term = request.json.get("search")
+        if term == "":
             term = "AABAM"
         term=term.upper()
         session['term'] = term
@@ -90,7 +87,7 @@ def term_search(termlink=None):
     else:
         heatmap_plot=None
 
-    page = int(request.args.get("page", 1))
+    page = int(request.json.get("page", 1))
     page_size=2
     per_page = 2
     offset = (page-1) * per_page
@@ -112,9 +109,9 @@ def term_search(termlink=None):
 @swag_from("../docs/query/eb_details.yml")
 def eb_details():
     edList=get_editions()
-    if 'edition_selection' in request.form and 'volume_selection' in request.form:
-        ed_raw=request.form.get('edition_selection')
-        vol_raw=request.form.get('volume_selection')
+    if 'edition_selection' in request.json and 'volume_selection' in request.json:
+        ed_raw=request.json.get('edition_selection')
+        vol_raw=request.json.get('volume_selection')
         if vol_raw !="" and ed_raw !="":
             ed_uri="<"+ed_raw+">"
             ed_r=get_editions_details(ed_uri)
@@ -144,7 +141,7 @@ def eb_details():
 @query.route("/vol_details", methods=['POST'])
 @swag_from("../docs/query/vol_details.yml")
 def vol_details():
-    uri_raw=request.form.get('edition_selection')
+    uri_raw=request.json.get('edition_selection')
     uri="<"+uri_raw+">"
     volList=get_volumes(uri)
     OutputArray = []
@@ -158,8 +155,8 @@ def vol_details():
 @swag_from("../docs/query/visualization_resources.yml")
 def visualization_resources(termlink=None, termtype=None):
     if request.method == "POST":
-        if 'resource_uri' in request.form:
-            uri_raw=request.form.get('resource_uri').strip().replace("<","").replace(">","")
+        if 'resource_uri' in request.json:
+            uri_raw=request.json.get('resource_uri').strip().replace("<","").replace(">","")
             if uri_raw == "":
                 uri="<https://w3id.org/eb/i/Article/992277653804341_144133901_AABAM_0>"
             else:
@@ -207,8 +204,8 @@ def similar_terms(termlink=None):
         session['uri'] = uri
         session["data_similar"] = ""
 
-    elif 'resource_uri' in request.form:
-        data_similar=request.form.get('resource_uri')
+    elif 'resource_uri' in request.json:
+        data_similar=request.json.get('resource_uri')
         if "https://" in data_similar or "w3id" in data_similar:
             uri_raw=data_similar.strip().replace("<","").replace(">","")
         elif data_similar == "":
@@ -298,7 +295,7 @@ def similar_terms(termlink=None):
         heatmap_plot=None
 
     #### Pagination ###
-    page = int(request.args.get("page", 1))
+    page = int(request.json.get("page", 1))
     page_size=10
     per_page = 10
     offset = (page-1) * per_page
@@ -338,8 +335,8 @@ def topic_modelling(topic_name=None):
     topic_name  = request.args.get('topic_name', None)
     num_topics=len(models.t_names)-2
     if topic_name == None:
-        if 'topic_name' in request.form:
-            topic_name=request.form.get('topic_name')
+        if 'topic_name' in request.json:
+            topic_name=request.json.get('topic_name')
             if topic_name=="":
                 topic_name="0_hindustan_of_hindustan_hindustan_in_district"
             else:
@@ -380,7 +377,7 @@ def topic_modelling(topic_name=None):
     bar_plot=models.topic_model.visualize_barchart([first_topic], n_words=10)
 
     #### Pagination ###
-    page = int(request.args.get("page", 1))
+    page = int(request.json.get("page", 1))
     page_size=10
     per_page = 10
     offset = (page-1) * per_page
@@ -413,8 +410,8 @@ def spelling_checker(termlink=None):
         uri="<https://w3id.org/eb/i/"+termtype+"/"+termlink+">"
         uri_raw=uri.replace("<","").replace(">","")
 
-    elif 'resource_uri' in request.form:
-        uri_checker=request.form.get('resource_uri')
+    elif 'resource_uri' in request.json:
+        uri_checker=request.json.get('resource_uri')
         if "https://" in uri_checker or "w3id" in uri_checker:
             uri_raw=uri_checker.strip().replace("<","").replace(">","")
             uri="<"+uri_raw+">"
@@ -453,8 +450,8 @@ def evolution_of_terms(termlink=None):
         uri="<https://w3id.org/eb/i/"+termtype+"/"+termlink+">"
         uri_raw=uri.replace("<","").replace(">","")
 
-    elif 'resource_uri' in request.form:
-        uri_checker=request.form.get('resource_uri')
+    elif 'resource_uri' in request.json:
+        uri_checker=request.json.get('resource_uri')
         if "https://" in uri_checker or "w3id" in uri_checker:
             uri_raw=uri_checker.strip().replace("<","").replace(">","")
             uri="<"+uri_raw+">"
@@ -554,116 +551,166 @@ def evolution_of_terms(termlink=None):
     }), HTTPStatus.OK
 
 
-@query.route("/defoe_queries", methods=["GET", "POST"])
+@query.route("/defoe_submit", methods=["POST"])
+@swag_from("../docs/query/defoe_submit.yml")
 def defoe_queries():
+    # todo get logged in user
+    # user_id = get_jwt_identity()
+    user_id = "wpa1"
+    
     defoe_q=dict_defoe_queries()
+    defoe_selection=request.json.get('defoe_selection')
+    
+    # build defoe config from request
+    config={}
+    config["preprocess"]=request.json.get('preprocess')
+    config["target_sentences"]= request.json.get('target_sentences').split(",")
+    config["target_filter"] = request.json.get('target_filter')
+    config["window"] = request.json.get('window')
+    config["start_year"]= request.json.get('start_year')
+    config["end_year"]= request.json.get('end_year')
+    config["os_type"]="os"
+    config["hit_count"] = request.json.get('hit_count')
+    config["data"] = os.path.join(files.uploads_path, user_id, request.json.get('file'))
 
-    if request.method == "POST":
+    # if result not saved, run new query
+    if "normalized" not in defoe_selection:
+        job_id = user_id + "_" + defoe_selection + "_" + time.strftime("%Y%m%d-%H%M%S")
 
-        config={}
-        defoe_selection=request.form.get('defoe_selection')
-        print("defoe_selection is %s" %defoe_selection)
-        config["preprocess"]=request.form.get('preprocess')
-        config["target_sentences"]= request.form.get('target_sentences').split(",")
-        config["target_filter"] = request.form.get('target_filter')
-        config["window"] = request.form.get('window')
-        config["defoe_path"]= "/Users/rf208/Research/NLS-Fellowship/work/defoe/"
-        config["start_year"]= request.form.get('start_year')
-        config["end_year"]= request.form.get('end_year')
-        config["os_type"]="os"
-        config["hit_count"] = request.form.get('hit_count')
+        job = get_defoe().submit_job(
+          job_id = job_id,
+          model_name = "sparql",
+          query_name = defoe_selection,
+          query_config = config,
+          # todo move to config
+          data_endpoint = "http://localhost:3030/total_eb/sparql",
+        )
+        return jsonify({
+          "success": True,
+          "id": job.id,
+        })
+    # pre-computed query
+    results_file=os.path.join(files.results_path, defoe_selection+".yml")
+    results=read_results(results_file)
 
-        if "normalized" not in defoe_selection:
-            file= request.files['file']
-            filename = secure_filename(file.filename)
-            file.save(os.path.join(app.config['UPLOAD_FOLDER'], filename))
-            config["data"]=os.path.join(app.config['UPLOAD_FOLDER'], filename)
+    #### creating config_defoe ####
+    config_defoe={}
+    if "terms" in defoe_selection or "uris" in defoe_selection:
+        config_defoe["preprocess"]= config["preprocess"]
+        config_defoe["target_sentences"]= config["target_sentences"]
+        config_defoe["target_filter"] = config["target_filter"]
+        config_defoe["start_year"]= config["start_year"]
+        config_defoe["end_year"]= config["end_year"]
+        if "snippet" in defoe_selection:
+            config_defoe["window"] = config["window"]
+    elif "frequency" in defoe_selection:
+        config_defoe["preprocess"]= config["preprocess"]
+        config_defoe["target_sentences"]= config["target_sentences"]
+        config_defoe["target_filter"] = config["target_filter"]
+        config_defoe["start_year"]= config["start_year"]
+        config_defoe["end_year"]= config["end_year"]
+        config_defoe["hit_count"] = config["hit_count"]
+
+    if "terms" in defoe_selection:
+        results_uris=results["terms_uris"]
+        return jsonify({
+          "defoe_q": defoe_q,
+          "flag": 1,
+          "results": results,
+          "results_uris": results_uris,
+          "defoe_selection": defoe_selection,
+          "config": config_defoe,
+        })
+
+    elif "uris" in defoe_selection or "normalized" in defoe_selection:
+        return jsonify({
+          "defoe_q": defoe_q,
+          "flag": 1,
+          "results": results,
+          "defoe_selection": defoe_selection,
+          "config": config_defoe,
+        })
+
+    preprocess= request.json.get('preprocess', None)
+    p_lexicon = preprocess_lexicon(config["data"], config["preprocess"])
+
+    #### Read Normalized data
+    norm_file=os.path.join(files.results_path, "publication_normalized.yml")
+    ####
+    norm_publication=read_results(norm_file)
+    taxonomy=p_lexicon
+    line_f_plot, line_n_f_plot=plot_taxonomy_freq(taxonomy, results, norm_publication)
+    return jsonify({
+      "defoe_q": defoe_q,
+      "flag": 1,
+      "results": results,
+      "defoe_selection": defoe_selection,
+      "line_f_plot": figure_to_dict(line_f_plot),
+      "line_n_f_plot": figure_to_dict(line_n_f_plot),
+      "config": config_defoe,
+    })
 
 
-
-        config_file=os.path.join(app.config['CONFIG_FOLDER'], "config_frances_web.yml")
-        with open(config_file, 'w') as outfile:
-            yaml.dump(config, outfile, default_flow_style=False)
-
-        results_file=os.path.join(app.config['RESULTS_FOLDER'], defoe_selection+".yml")
-
-        if "normalized" not in defoe_selection:
-            print("spark-submit")
-            cwd = os.getcwd()
-            os.chdir(defoe_path)
-            cmd="spark-submit --driver-memory 12g --py-files defoe.zip defoe/run_query.py sparql_data.txt sparql defoe.sparql.queries."+ defoe_selection+" "+ config_file  +" -r " + results_file +" -n 34"
-            #os.system(cmd)
-            os.chdir(cwd)
-
-        print("finished with apache sark submission, results in -- %s" % results_file)
-        results=read_results(results_file)
-
-        #### creating config_defoe ####
-        config_defoe={}
-        if "terms" in defoe_selection or "uris" in defoe_selection:
-            config_defoe["preprocess"]= config["preprocess"]
-            config_defoe["target_sentences"]= config["target_sentences"]
-            config_defoe["target_filter"] = config["target_filter"]
-            config_defoe["start_year"]= config["start_year"]
-            config_defoe["end_year"]= config["end_year"]
-            if "snippet" in defoe_selection:
-                config_defoe["window"] = config["window"]
-        elif "frequency" in defoe_selection:
-            config_defoe["preprocess"]= config["preprocess"]
-            config_defoe["target_sentences"]= config["target_sentences"]
-            config_defoe["target_filter"] = config["target_filter"]
-            config_defoe["start_year"]= config["start_year"]
-            config_defoe["end_year"]= config["end_year"]
-            config_defoe["hit_count"] = config["hit_count"]
+@query.route("/upload", methods=["POST"])
+@swag_from("../docs/query/upload.yml")
+def upload():
+    # todo get logged in user
+    # user_id = get_jwt_identity()
+    user_id = "wpa1"
+    user_folder = os.path.join(files.uploads_path, user_id)
+    os.makedirs(user_folder, exist_ok=True)
+    
+    file = request.files['file']
+    submit_name = secure_filename(file.filename)
+    save_name = time.strftime("%Y%m%d-%H%M%S") + "_" + submit_name
+    file.save(os.path.join(user_folder, save_name))
+    
+    return jsonify({
+      "success": True,
+      "file": save_name,
+    })
 
 
+@query.route("/defoe_list", methods=["GET"])
+@swag_from("../docs/query/defoe_list.yml")
+def defoe_list():
+    return jsonify({
+      "defoe_q": dict_defoe_queries(),
+    })
 
-        if "terms" in defoe_selection:
-            results_uris=results["terms_uris"]
-            print("Sending results")
-            return render_template('defoe_results.html', defoe_q=defoe_q, flag=1, results=results, results_uris=results_uris,  defoe_selection=defoe_selection, config=config_defoe)
 
-        elif "uris" in defoe_selection or "normalized" in defoe_selection:
+@query.route("/defoe_status", methods=["GET"])
+@swag_from("../docs/query/defoe_status.yml")
+def defoe_status():
+    job_id = request.args.get('id')
+    job = get_defoe().get_status(job_id)
+    return jsonify({
+      "id": job_id,
+      "result": job.result,
+      "error": job.error,
+      "done": job.done,
+    })
 
-            print("Sending results")
-            return render_template('defoe_results.html', defoe_q=defoe_q, flag=1, results=results, defoe_selection=defoe_selection, config=config_defoe)
-        else:
-            preprocess= request.args.get('preprocess', None)
-            p_lexicon = preprocess_lexicon(config["data"], config["preprocess"])
-
-            #### Read Normalized data
-            norm_file=os.path.join(app.config['RESULTS_FOLDER'], "publication_normalized.yml")
-            ####
-            norm_publication=read_results(norm_file)
-            taxonomy=p_lexicon
-            plot_f, plot_n_f=plot_taxonomy_freq(taxonomy, results, norm_publication)
-            #### only for ploty figures
-            line_f_plot = plot_f.to_json()
-            line_n_f_plot = plot_n_f.to_json()
-            ####
-            print("Sending results")
-            return render_template('defoe_results.html', defoe_q=defoe_q, flag=1, results=results, defoe_selection=defoe_selection, line_f_plot=line_f_plot, line_n_f_plot=line_n_f_plot, config=config_defoe)
-
-    return render_template('defoe.html', defoe_q=defoe_q)
 
 @query.route("/download", methods=['GET'])
 def download(defoe_selection=None):
     defoe_selection = request.args.get('defoe_selection', None)
     cwd = os.getcwd()
-    os.chdir(app.config['RESULTS_FOLDER'])
+    os.chdir(files.results_path)
     results_file=defoe_selection+".yml"
     zip_file = defoe_selection+".zip"
     with ZipFile(zip_file, 'w') as zipf:
         zipf.write(results_file)
     os.chdir(cwd)
-    zip_file=os.path.join(app.config['RESULTS_FOLDER'], zip_file)
+    zip_file=os.path.join(files.results_path, zip_file)
     return send_file(zip_file, as_attachment=True)
+
 
 @query.route("/visualize_freq", methods=['GET'])
 def visualize_freq(defoe_selection=None):
     defoe_selection = request.args.get('defoe_selection', None)
     lexicon_file = request.args.get('lexicon_file', None)
-    results_file=os.path.join(app.config['RESULTS_FOLDER'], defoe_selection+".yml")
+    results_file=os.path.join(files.results_path, defoe_selection+".yml")
 
     preprocess= request.args.get('preprocess', None)
     p_lexicon = preprocess_lexicon(lexicon_file, preprocess)
@@ -672,10 +719,8 @@ def visualize_freq(defoe_selection=None):
     #### Read Results File
     results=read_results(results_file)
 
-
-
     #### Read Normalized data
-    norm_file=os.path.join(app.config['RESULTS_FOLDER'], "publication_normalized.yml")
+    norm_file=os.path.join(files.results_path, "publication_normalized.yml")
     ####
     norm_publication=read_results(norm_file)
     print("---%s---" %norm_publication)

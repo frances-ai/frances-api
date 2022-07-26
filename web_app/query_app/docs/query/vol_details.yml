@@ -2,13 +2,17 @@ Volume Details
 ---
 tags:
   - Query
+consumes:
+  - application/json
 parameters:
-  - in: formData
-    name: edition_selection
-    type: string
-    description: The edition to list the volumes of.
-    required: false
-
+  - in: body
+    name: payload
+    schema:
+      type: object
+      properties:
+        edition_selection:
+          type: string
+          description: The edition to list the volumes of.
 responses:
   201:
     description: Volumes list
