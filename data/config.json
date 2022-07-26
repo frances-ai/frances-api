@@ -1,6 +1,6 @@
 {
   "defoe": {
-    "sparkUrl": "http://localhost:3030/total_eb/sparql"
+    "sparkUrl": "local[1]"
   },
   "models": {
     "filePath": "/Users/damonyu/Documents/CS5098/frances-api/web_app/models"
@@ -9,5 +9,9 @@
     "host": "127.0.0.1",
     "user": "frances",
     "password": "frances"
+  },
+  "files": {
+    "uploads": "/home/username/frances-ai/uploads",
+    "results": "/home/username/frances-ai/results"
   }
 }

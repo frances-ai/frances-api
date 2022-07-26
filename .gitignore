@@ -5,3 +5,6 @@
 /data/total_eb.ttl
 
 .idea
+
+# Fuseki Volume
+/fuseki_data

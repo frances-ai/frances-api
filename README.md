@@ -5,7 +5,7 @@ Each repository should be cloned into the same folder, as shown below:
  .
  ├── deploy/
  ├── frances-api/
- └── defoe/
+ └── defoe_lib/
 ```
 
 ## Start the required local services
