@@ -225,7 +225,7 @@ def similar_terms(termlink=None):
         data_similar = session.get('data_similar')
 
     if "free_search" in uri_raw:
-        results, topics_vis=calculating_similarity_text(data_similar,models.text_embeddings, model, models.terms_info, models.documents, models.uris, models.topics_names, models.topics, models.sentiment_terms, -1)
+        results, topics_vis=calculating_similarity_text(data_similar,models.text_embeddings, models.model, models.terms_info, models.documents, models.uris, models.topics_names, models.topics, models.sentiment_terms, -1)
 
     else:
         term, definition, enum, year, vnum  =get_document(uri)
