@@ -12,7 +12,7 @@ from .utils import calculating_similarity_text, get_topic_name, retrieving_simil
 from .utils import plot_taxonomy_freq, preprocess_lexicon, dict_defoe_queries, read_results
 from .utils import pagination_to_dict, sanitize_results, figure_to_dict
 
-import os, yaml
+import time, os, yaml
 import pickle
 from tqdm import tqdm
 from zipfile import *
@@ -554,6 +554,10 @@ def evolution_of_terms(termlink=None):
 @query.route("/defoe_submit", methods=["POST"])
 @swag_from("../docs/query/defoe_submit.yml")
 def defoe_queries():
+    # todo get logged in user
+    # user_id = get_jwt_identity()
+    user_id = "wpa1"
+    
     defoe_q=dict_defoe_queries()
     defoe_selection=request.json.get('defoe_selection')
     
@@ -567,16 +571,14 @@ def defoe_queries():
     config["end_year"]= request.json.get('end_year')
     config["os_type"]="os"
     config["hit_count"] = request.json.get('hit_count')
+    config["data"] = os.path.join(files.uploads_path, user_id, request.json.get('file'))
 
     # if result not saved, run new query
     if "normalized" not in defoe_selection:
-        file = request.files['file']
-        filename = secure_filename(file.filename)
-        file.save(os.path.join(files.uploads_path, filename))
-        config["data"] = os.path.join(files.uploads_path, filename)
+        job_id = user_id + "_" + defoe_selection + "_" + time.strftime("%Y%m%d-%H%M%S")
 
         job = get_defoe().submit_job(
-          job_id = "job-1234",
+          job_id = job_id,
           model_name = "sparql",
           query_name = defoe_selection,
           query_config = config,
@@ -646,6 +648,26 @@ def defoe_queries():
       "line_f_plot": figure_to_dict(line_f_plot),
       "line_n_f_plot": figure_to_dict(line_n_f_plot),
       "config": config_defoe,
+    })
+
+
+@query.route("/upload", methods=["POST"])
+@swag_from("../docs/query/upload.yml")
+def upload():
+    # todo get logged in user
+    # user_id = get_jwt_identity()
+    user_id = "wpa1"
+    user_folder = os.path.join(files.uploads_path, user_id)
+    os.makedirs(user_folder, exist_ok=True)
+    
+    file = request.files['file']
+    submit_name = secure_filename(file.filename)
+    save_name = time.strftime("%Y%m%d-%H%M%S") + "_" + submit_name
+    file.save(os.path.join(user_folder, save_name))
+    
+    return jsonify({
+      "success": True,
+      "file": save_name,
     })
 
 

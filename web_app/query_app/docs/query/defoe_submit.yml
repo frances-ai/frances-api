@@ -41,11 +41,9 @@ parameters:
           type: string
           description: Either term or word.
           example: word
-  - in: formData
-    name: file
-    type: file
-    description: Should contain a line per keyword or keysentance for this query.
-    required: false
+        file:
+          type: string
+          description: The ID of a file that was previously uploaded.
 responses:
   201:
     description: Defoe query ID
