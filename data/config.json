@@ -3,9 +3,6 @@
     "sparkUrl": "local[1]",
     "fusekiUrl": "http://localhost:3030/total_eb/sparql"
   },
-  "models": {
-    "filePath": "/home/username/frances-ai/frances-api/web_app/models"
-  },
   "database": {
     "host": "127.0.0.1",
     "user": "frances",
@@ -13,6 +10,7 @@
   },
   "files": {
     "uploads": "/home/username/frances-ai/uploads",
-    "results": "/home/username/frances-ai/results"
+    "results": "/home/username/frances-ai/results",
+    "models": "/home/username/frances-ai/frances-api/web_app/models"
   }
 }
