@@ -1,6 +1,7 @@
 {
   "defoe": {
-    "sparkUrl": "local[1]"
+    "sparkUrl": "local[1]",
+    "fusekiUrl": "http://localhost:3030/total_eb/sparql"
   },
   "models": {
     "filePath": "/home/username/frances-ai/frances-api/web_app/models"
