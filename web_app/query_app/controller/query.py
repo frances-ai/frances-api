@@ -382,8 +382,8 @@ def topic_modelling(topic_name=None):
     per_page = 10
     offset = (page-1) * per_page
     limit = offset+per_page
-    results = dict(islice(results.items(),offset, limit))
-    results_for_render = sanitize_results(results)
+    results_page = dict(islice(results.items(),offset, limit))
+    results_for_render = sanitize_results(results_page)
     pagination = Pagination(page=page, total=len(results), per_page=page_size, search=False)
     ##############
     
