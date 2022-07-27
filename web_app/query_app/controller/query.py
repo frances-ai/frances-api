@@ -582,8 +582,6 @@ def defoe_queries():
           model_name = "sparql",
           query_name = defoe_selection,
           query_config = config,
-          # todo move to config
-          data_endpoint = "http://localhost:3030/total_eb/sparql",
         )
         return jsonify({
           "success": True,
