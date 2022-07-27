@@ -21,6 +21,6 @@ numba
 networkx
 flask-jwt-extended
 flasgger
-psycopg2
+psycopg2-binary
 validators
 flask_cors
