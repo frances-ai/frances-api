@@ -6,10 +6,11 @@ from flask_jwt_extended import create_access_token, create_refresh_token, jwt_re
     set_access_cookies, set_refresh_cookies, unset_jwt_cookies
 from werkzeug.security import generate_password_hash, check_password_hash
 
-from ..db import User, db
+from ..db import User
+from ..resolver import get_database
 
 auth = Blueprint("auth", __name__, url_prefix="/api/v1")
-
+database = get_database()
 
 def validate_register_info(first_name, last_name, email, password):
     if len(password) < 6:
@@ -21,7 +22,7 @@ def validate_register_info(first_name, last_name, email, password):
     if not validators.email(email):
         raise Exception('Email is not valid')
 
-    if db.get_user_by_email(email) is not None:
+    if database.get_user_by_email(email) is not None:
         raise Exception('Email has been registered')
 
 
@@ -35,7 +36,7 @@ def email_registered():
         }), HTTPStatus.BAD_REQUEST
 
     registered = False
-    if db.get_user_by_email(email) is not None:
+    if database.get_user_by_email(email) is not None:
         registered = True
 
     return jsonify({
@@ -62,7 +63,7 @@ def register():
     pwd_hash = generate_password_hash(password)
 
     user = User.create_new(first_name=first_name, last_name=last_name, password=pwd_hash, email=email)
-    db.add_user(user)
+    database.add_user(user)
 
     return jsonify({
         "user": {
@@ -85,7 +86,7 @@ def login():
             "error": 'Required login info can not be empty'
         }), HTTPStatus.BAD_REQUEST
 
-    user = db.get_user_by_email(email)
+    user = database.get_user_by_email(email)
 
     if user:
         pwd_correct = check_password_hash(user.password, password)
@@ -138,7 +139,7 @@ def refresh_token():
 @swag_from("../docs/auth/profile.yml")
 def profile():
     user_id = get_jwt_identity()
-    user = db.get_user_by_id(user_id)
+    user = database.get_user_by_id(user_id)
     return jsonify({
         "user": {
             "first_name": user.first_name,
