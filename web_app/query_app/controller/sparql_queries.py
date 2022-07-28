@@ -2,7 +2,11 @@ from SPARQLWrapper import SPARQLWrapper, RDF, JSON
 import requests
 import traceback
 
-sparqlW = SPARQLWrapper("http://localhost:3030/total_eb/sparql")
+from ..resolver import get_frances
+
+fuseki_url = get_frances().fuseki_url
+
+sparqlW = SPARQLWrapper(fuseki_url)
 def get_editor():
     sparqlW.setQuery("""
         PREFIX eb: <https://w3id.org/eb#>
@@ -19,7 +23,7 @@ def get_editor():
 
 
 def describe_resource(uri=None):
-   sparql = SPARQLWrapper("http://localhost:3030/total_eb/sparql")
+   sparql = SPARQLWrapper(fuseki_url)
    query="""
    PREFIX eb: <https://w3id.org/eb#>
    DESCRIBE %s 
@@ -69,7 +73,7 @@ def describe_resource(uri=None):
 
 
 def get_vol_by_vol_uri(uri):
-    sparql = SPARQLWrapper("http://localhost:3030/total_eb/sparql")
+    sparql = SPARQLWrapper(fuseki_url)
     query="""
     PREFIX eb: <https://w3id.org/eb#>
     SELECT ?vnum ?letters ?part WHERE {
@@ -91,7 +95,7 @@ def get_vol_by_vol_uri(uri):
     return data
 
 def get_volumes(uri):
-    sparql = SPARQLWrapper("http://localhost:3030/total_eb/sparql")
+    sparql = SPARQLWrapper(fuseki_url)
     query="""
     PREFIX eb: <https://w3id.org/eb#>
     SELECT ?v ?vnum ?part ?letters WHERE {
@@ -117,7 +121,7 @@ def get_volumes(uri):
 
 
 def get_editions():
-    sparql = SPARQLWrapper("http://localhost:3030/total_eb/sparql")
+    sparql = SPARQLWrapper(fuseki_url)
     query1="""
     PREFIX eb: <https://w3id.org/eb#>
     SELECT ?enum ?e ?y WHERE {
@@ -138,7 +142,7 @@ def get_editions():
 
 
 def get_numberOfVolumes(uri):
-    sparql = SPARQLWrapper("http://localhost:3030/total_eb/sparql")
+    sparql = SPARQLWrapper(fuseki_url)
     query="""
     PREFIX eb: <https://w3id.org/eb#>
     SELECT (COUNT (DISTINCT ?v) as ?count)
@@ -154,7 +158,7 @@ def get_numberOfVolumes(uri):
 
 
 def get_editions_details(uri=None):
-    sparql = SPARQLWrapper("http://localhost:3030/total_eb/sparql")
+    sparql = SPARQLWrapper(fuseki_url)
     if not uri:
        uri="<https://w3id.org/eb/i/Edition/992277653804341>"
     query="""
@@ -193,7 +197,7 @@ def get_editions_details(uri=None):
     return clean_r
 
 def get_volume_details(uri=None):
-    sparql = SPARQLWrapper("http://localhost:3030/total_eb/sparql")
+    sparql = SPARQLWrapper(fuseki_url)
     query="""
     PREFIX eb: <https://w3id.org/eb#>
     SELECT ?num ?title ?part ?metsXML ?volumeId ?permanentURL ?numberOfPages ?letters WHERE {
@@ -374,7 +378,7 @@ def get_vol_statistics(uri):
     return data
             
 def get_document(uri):
-    sparql = SPARQLWrapper("http://localhost:3030/total_eb/sparql")
+    sparql = SPARQLWrapper(fuseki_url)
     query="""
     PREFIX eb: <https://w3id.org/eb#>
     PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
