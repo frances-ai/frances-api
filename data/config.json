@@ -1,17 +1,19 @@
 {
-  "defoe": {
-    "sparkUrl": "local[1]"
+  "frances": {
+    "fusekiUrl": "http://fuseki:3030/total_eb/sparql",
+    "files": {
+      "uploads": "/app/frances-api/web_app/query_app/upload_folder",
+      "results": "/app/frances-api/web_app/query_app/defoe_results",
+      "models": "/app/frances-api/web_app/models"
+    }
   },
-  "models": {
-    "filePath": "/Users/damonyu/Documents/CS5098/frances-api/web_app/models"
+  "defoe": {
+    "sparkUrl": "local[1]",
+    "fusekiUrl": "http://fuseki:3030/total_eb/sparql"
   },
   "database": {
-    "host": "127.0.0.1",
+    "host": "database",
     "user": "frances",
     "password": "frances"
-  },
-  "files": {
-    "uploads": "/Users/damonyu/Documents/CS5098/uploads",
-    "results": "/Users/damonyu/Documents/CS5098/results"
   }
 }

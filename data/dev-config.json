@@ -1,0 +1,19 @@
+{
+  "frances": {
+    "fusekiUrl": "http://localhost:3030/total_eb/sparql",
+    "files": {
+      "uploads": "/home/username/frances-api/web_app/query_app/upload_folder",
+      "results": "/home/username/frances-api/web_app/query_app/defoe_results",
+      "models": "/home/username/frances-api/web_app/models"
+    }
+  },
+  "defoe": {
+    "sparkUrl": "local[1]",
+    "fusekiUrl": "http://localhost:3030/total_eb/sparql"
+  },
+  "database": {
+    "host": "127.0.0.1",
+    "user": "frances",
+    "password": "frances"
+  }
+}
