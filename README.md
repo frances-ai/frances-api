@@ -13,6 +13,12 @@ Each repository should be cloned into the `/deploy` directory, as shown below:
 
 In other words, both repos are cloned into this directory.
 
+### Build frances-api docker image
+
+Run the following from the `/deploy` directory:
+
+`docker build --tag frances-api --label frances-api .`
+
 ### Start the required local services
 
 Run the following from the `/deploy` directory:
