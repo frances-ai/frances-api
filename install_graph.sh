@@ -1,17 +1,15 @@
 #!/bin/sh
-# Warning: this script a work in progress.
 
-data_dir="./data/"
-config_file="${data_dir}config.json"
-graph_file="${data_dir}total_eb.ttl"
+# Address within a docker network
+fuseki_addr="fuseki"
+
+graph_file="/data/total_eb.ttl"
 
 dataset="total_eb"
-create_dataset_url="http://localhost:3030/$/datasets"
-dataset_url="http://localhost:3030/$/datasets/${dataset}"
-upload_data_url="http://localhost:3030/${dataset}/data"
+create_dataset_url="http://${fuseki_addr}:3030/$/datasets"
+dataset_url="http://${fuseki_addr}:3030/$/datasets/${dataset}"
+upload_data_url="http://${fuseki_addr}:3030/${dataset}/data"
 fuseki_admin_password="pass123"
-
-consul_url="http://127.0.0.1:8500/v1/kv/frances/config"
 
 # Check fuseki for the uploaded knowledge graph
 fuseki_response=$(
@@ -38,11 +36,3 @@ if [[ "$fuseki_response" == 404 ]] ; then
     )
   echo $upload
 fi
-
-# # Set Consul key/value
-consul_config=`cat ${config_file}`
-curl -X PUT -d "$consul_config" $consul_url
-
-# # Start backend server
-# cd ..
-# python -m frances-api.web_app
