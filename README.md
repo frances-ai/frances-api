@@ -31,7 +31,7 @@ Verify that each service has been started successfully.
 
 Create a dataset with the name `total_eb`, uploading the file `total_eb.ttl` to it.
 
-### Edit the config entry in Consul
+### Edit the config entry in Consul (optional)
 
 Open the Consul web UI on `localhost:8500` and look at the key called `frances/config`. By default, this will have the values given in the file `./data/config.json`. You shouldn't need to edit this at all when functioning properly.
 
@@ -62,7 +62,7 @@ Create a dataset with the name `total_eb`, uploading the file `total_eb.ttl` to 
 
 ### Create a config entry in Consul
 
-Open the Consul web UI on `localhost:8500` and create a key called `frances/config` with the values given in the file `deploy/dev-config.json`.
+Open the Consul web UI on `localhost:8500` and create a key called `frances/config` with the template given in the file `deploy/dev-config.json`. You will need to edit these values for your own machine.
 
 ### Start the backend server
 
