@@ -9,12 +9,8 @@ services:
     environment:
       - POSTGRES_USER=frances
       - POSTGRES_PASSWORD=frances
-    ports:
-      - "5432:5432"
   fuseki:
     image: stain/jena-fuseki
-    ports:
-      - "3030:3030"
     environment:
       - ADMIN_PASSWORD=pass123
       - JVM_ARGS=-Xmx4g
