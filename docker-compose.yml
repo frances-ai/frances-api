@@ -1,11 +1,10 @@
 version: "3.9"
-   
 services:
   consul:
     image: hashicorp/consul
     ports:
       - "8500:8500"
-  db:
+  database:
     image: postgres
     environment:
       - POSTGRES_USER=frances
@@ -24,6 +23,19 @@ services:
         limits:
           cpus: "2"
           memory: 6gb
+  frances:
+    image: frances-api:latest
+    ports:
+      - "80:80"
+      - "8080:8080"
+      - "5000:5000"
+    environment:
+      - "CONSUL_ADDRESS=consul:8500"
+    depends_on:
+      - "consul"
+      - "database"
+      - "fuseki"
+
   # spark:
   #   image: bitnami/spark
   #   environment:
