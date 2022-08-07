@@ -9,7 +9,8 @@
   },
   "defoe": {
     "sparkUrl": "local[1]",
-    "fusekiUrl": "http://localhost:3030/total_eb/sparql"
+    "fusekiUrl": "http://localhost:3030/total_eb/sparql",
+    "moduleZip": "/app/defoe_lib.zip"
   },
   "database": {
     "host": "127.0.0.1",
