@@ -110,14 +110,6 @@ class Database:
         return subs
 
 
-# Initialise database
-DATABASE_CONFIG = DatabaseConfig()
-DATABASE_CONFIG.host = "127.0.0.1"
-DATABASE_CONFIG.user = "frances"
-DATABASE_CONFIG.password = "frances"
-db = Database(DATABASE_CONFIG)
-
-
 class User:
     def __init__(self, id, first_name, last_name, email, password):
         self.id = id
