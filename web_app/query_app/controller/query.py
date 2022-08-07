@@ -682,12 +682,13 @@ def defoe_list():
 def defoe_status():
     job_id = request.args.get('id')
     job = get_defoe().get_status(job_id)
-    return jsonify({
-      "id": job_id,
-      "result": job.result,
-      "error": job.error,
-      "done": job.done,
-    })
+    with job._lock:
+        return jsonify({
+          "id": job_id,
+          "result": job.result,
+          "error": job.error,
+          "done": job.done,
+        })
 
 
 @query.route("/download", methods=['GET'])
