@@ -1,4 +1,7 @@
 # Deployment
+
+**Note you will need to download the [required files](#file-downloads) to deploy this project.**
+
 ## Local
 
 Run this when you want to use frances on your own machine.
@@ -69,4 +72,16 @@ Open the Consul web UI on `localhost:8500` and create a key called `frances/conf
 Run the following from the root directory:
 
 `python -m frances-api.web_app`
+
+# File downloads
+
+For this application there are some large files which can't be put in version control. These need to be downloaded (and extracted if needed) before you can build the frances-api docker image.
+
+
+If these links no longer work, please contact the current maintainers of Frances.
+
+| Name | Path | Link |
+| --- | --- | --- |
+| Knowledge Graph           | `total_eb.ttl`                         | [Download](https://frances-ai-public.s3.eu-west-1.amazonaws.com/total_eb.ttl) |
+| Machine Learning Models   | `./frances-api/web_app/models/`        | [Download](https://frances-ai-public.s3.eu-west-1.amazonaws.com/models.tar.gz) |
 
