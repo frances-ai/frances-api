@@ -57,7 +57,7 @@ class DefaultFlaskConfig:
     # Only allow JWT cookies to be sent over https. In production, this should likely be True
     JWT_COOKIE_SECURE = False
 
-    JWT_COOKIE_DOMAIN = "127.0.0.1"
+    JWT_COOKIE_DOMAIN = "frances-front"
 
     # Set the cookie paths, so that you are only sending your access token
     # cookie to the access endpoints, and only sending your refresh token
@@ -77,5 +77,5 @@ class DefaultFlaskConfig:
     JWT_REFRESH_TOKEN_EXPIRES = timedelta(days=7)
 
     # CORS - uncomment it and change the domain in production
-    CORS_ORIGINS = 'http://127.0.0.1:3000'
+    CORS_ORIGINS = 'http://frances-front:3000'
     CORS_SUPPORTS_CREDENTIALS = True
