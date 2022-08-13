@@ -673,7 +673,7 @@ def upload():
 @swag_from("../docs/query/defoe_list.yml")
 def defoe_list():
     return jsonify({
-      "queries": dict_defoe_queries().keys(),
+      "queries": list(dict_defoe_queries().keys()),
     })
 
 
