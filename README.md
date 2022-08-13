@@ -24,6 +24,8 @@ Run the following from the `/deploy` directory:
 
 ### Start the required local services
 
+Change the IP of your host machine in the `docker-compose.local.yml` file:
+
 Run the following from the `/deploy` directory:
 
 `docker compose -f docker-compose.local.yml up`

@@ -53,6 +53,8 @@ services:
       - "5000:5000"
     environment:
       - "CONSUL_ADDRESS=consul:8500"
+      - "FRANCES_FRONT_DOMAIN=34.125.20.38"
+      - "FRANCES_FRONT_PORT=3000"
     depends_on:
       - "consul"
       - "database"
@@ -63,3 +65,5 @@ services:
     image: public.ecr.aws/y0v7m7i8/frances-front:latest
     ports:
       - "3000:3000"
+    environment:
+    - "REACT_APP_FRANCES_API_ADDRESS=http://34.125.20.38:5000/api/v1"
