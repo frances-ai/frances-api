@@ -65,4 +65,4 @@ EXPOSE 5000
 COPY start.sh .
 RUN chmod +x start.sh
 
-CMD ["bash", "start.sh"] 
+CMD ["bash", "start.sh"]
