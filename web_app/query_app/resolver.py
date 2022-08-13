@@ -15,6 +15,11 @@ CONSUL_PROTOCOL = "http://"
 CONSUL_DEFAULT_ADDRESS = "localhost:8500"
 CONFIG_PATH = "/v1/kv/frances/config?raw"
 
+FRANCES_FRONT_DOMAIN_VAR_NAME = "FRANCES_FRONT_DOMAIN"
+FRANCES_FRONT_PORT_VAR_NAME = "FRANCES_FRONT_PORT"
+FRANCES_FRONT_DEFAULT_PORT = "3000"
+FRANCES_FRONT_DEFAULT_DOMAIN = "127.0.0.1"
+
 config = None
 frances = None
 defoe = None
@@ -41,7 +46,7 @@ class FrancesConfig:
   def __init__(self, fuseki_url="", files=None):
     self.fuseki_url = fuseki_url
     self.files = files
-  
+
   @staticmethod
   def from_dict(vals):
     config = FrancesConfig()
@@ -53,13 +58,36 @@ class FrancesConfig:
 def get_config_url():
   consul_var = os.getenv(CONSUL_VAR_NAME)
   consul_address = None
-  
+
   if consul_var != None:
     consul_address = consul_var
   else:
     consul_address = CONSUL_DEFAULT_ADDRESS
-  
+
   return CONSUL_PROTOCOL + consul_address + CONFIG_PATH
+
+
+def get_front_env():
+  domain_var = os.getenv(FRANCES_FRONT_DOMAIN_VAR_NAME)
+  domain = None
+
+  if domain_var != None:
+    domain = domain_var
+  else:
+    domain = FRANCES_FRONT_DEFAULT_DOMAIN
+
+  port_var = os.getenv(FRANCES_FRONT_PORT_VAR_NAME)
+  port = None
+
+  if port_var != None:
+    port = port_var
+  else:
+    port = FRANCES_FRONT_DEFAULT_PORT
+  return {
+    'DOMAIN': domain,
+    'ADDRESS': CONSUL_PROTOCOL + domain + ':' + port
+  }
+
 
 def get_config():
   global config
@@ -67,11 +95,11 @@ def get_config():
     return config
   url = get_config_url()
   print("Resolved consul address as: " + url)
-  
+
   resp = requests.get(url)
   print("Consul config retrieved:")
   print(resp.text)
-  
+
   config = QueryAppConfig.from_json(resp.text)
   return config
 
