@@ -86,7 +86,7 @@ def preprocess_lexicon(data_file, preprocess="normalize"):
 
 def dict_defoe_queries():
     defoe_q={}
-    defoe_q["frequency_keyseach_by_year"]="frequency_keyseach_by_year"
+    defoe_q["frequency_keysearch_by_year"]="frequency_keysearch_by_year"
     defoe_q["publication_normalized"]="publication_normalized"
     defoe_q["uris_keysearch"]="uris_keysearch"
     defoe_q["terms_snippet_keysearch_by_year"]="terms_snippet_keysearch_by_year"
