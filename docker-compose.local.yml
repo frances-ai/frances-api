@@ -11,9 +11,12 @@ services:
       - POSTGRES_PASSWORD=frances
   fuseki:
     image: stain/jena-fuseki
+    ports:
+      - "3030:3030"
     environment:
       - ADMIN_PASSWORD=pass123
       - JVM_ARGS=-Xmx4g
+      - FUSEKI_DATASET_1=total_eb
     deploy:
       resources:
         limits:
@@ -42,17 +45,25 @@ services:
       - SPARK_RPC_ENCRYPTION_ENABLED=no
       - SPARK_LOCAL_STORAGE_ENCRYPTION_ENABLED=no
       - SPARK_SSL_ENABLED=no
-  frances:
-    image: frances-api:latest
+  frances-api:
+    image: public.ecr.aws/y0v7m7i8/frances-api:latest
     ports:
       - "80:80"
       - "8080:8080"
       - "5000:5000"
     environment:
       - "CONSUL_ADDRESS=consul:8500"
+      - "FRANCES_FRONT_DOMAIN=34.125.20.38"
+      - "FRANCES_FRONT_PORT=3000"
     depends_on:
       - "consul"
       - "database"
       - "fuseki"
       - "spark"
       - "spark-worker"
+  frances-front:
+    image: public.ecr.aws/y0v7m7i8/frances-front:latest
+    ports:
+      - "3000:3000"
+    environment:
+    - "REACT_APP_FRANCES_API_ADDRESS=http://34.125.20.38:5000/api/v1"
