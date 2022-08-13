@@ -8,9 +8,8 @@
     }
   },
   "defoe": {
-    "sparkUrl": "spark://spark:7077",
-    "fusekiUrl": "http://fuseki:3030/total_eb/sparql",
-    "moduleZip": "/app/defoe_lib.zip"
+    "sparkUrl": "local[1]",
+    "fusekiUrl": "http://fuseki:3030/total_eb/sparql"
   },
   "database": {
     "host": "database",
