@@ -566,12 +566,16 @@ def defoe_queries():
     config["preprocess"]=request.json.get('preprocess')
     config["target_sentences"]= request.json.get('target_sentences').split(",")
     config["target_filter"] = request.json.get('target_filter')
-    config["window"] = request.json.get('window')
     config["start_year"]= request.json.get('start_year')
     config["end_year"]= request.json.get('end_year')
     config["os_type"]="os"
     config["hit_count"] = request.json.get('hit_count')
     config["data"] = os.path.join(files.uploads_path, user_id, request.json.get('file'))
+
+    # set default window for snippet queries
+    config["window"] = request.json.get('window')
+    if config["window"] is None:
+        config["window"] = 10
 
     # if result not saved, run new query
     if "normalized" not in defoe_selection:
@@ -618,6 +622,7 @@ def defoe_queries():
           "results_uris": results_uris,
           "defoe_selection": defoe_selection,
           "config": config_defoe,
+          "success": True,
         })
 
     elif "uris" in defoe_selection or "normalized" in defoe_selection:
@@ -627,7 +632,8 @@ def defoe_queries():
           "results": results,
           "defoe_selection": defoe_selection,
           "config": config_defoe,
-        })
+          "success": True,
+         })
 
     preprocess= request.json.get('preprocess', None)
     p_lexicon = preprocess_lexicon(config["data"], config["preprocess"])
@@ -646,6 +652,7 @@ def defoe_queries():
       "line_f_plot": figure_to_dict(line_f_plot),
       "line_n_f_plot": figure_to_dict(line_n_f_plot),
       "config": config_defoe,
+      "success": True,
     })
 
 
@@ -685,7 +692,7 @@ def defoe_status():
     with job._lock:
         return jsonify({
           "id": job_id,
-          "result": job.result,
+          "results": job.result,
           "error": job.error,
           "done": job.done,
         })
