@@ -711,29 +711,3 @@ def download(defoe_selection=None):
     zip_file=os.path.join(files.results_path, zip_file)
     return send_file(zip_file, as_attachment=True)
 
-
-@query.route("/visualize_freq", methods=['GET'])
-def visualize_freq(defoe_selection=None):
-    defoe_selection = request.args.get('defoe_selection', None)
-    lexicon_file = request.args.get('lexicon_file', None)
-    results_file=os.path.join(files.results_path, defoe_selection+".yml")
-
-    preprocess= request.args.get('preprocess', None)
-    p_lexicon = preprocess_lexicon(lexicon_file, preprocess)
-    defoe_q=dict_defoe_queries()
-
-    #### Read Results File
-    results=read_results(results_file)
-
-    #### Read Normalized data
-    norm_file=os.path.join(files.results_path, "publication_normalized.yml")
-    ####
-    norm_publication=read_results(norm_file)
-    print("---%s---" %norm_publication)
-    taxonomy=p_lexicon
-    plot_f, plot_n_f=plot_taxonomy_freq(taxonomy, results, norm_publication)
-    #### only for ploty figures
-    line_f_plot = plot_f.to_json()
-    line_n_f_plot = plot_n_f.to_json()
-    ####
-    return render_template('defoe.html', defoe_q=defoe_q, flag=1, results=results, defoe_selection=defoe_selection, lexicon_file=lexicon_file, line_f_plot=line_f_plot, line_n_f_plot=line_n_f_plot)
