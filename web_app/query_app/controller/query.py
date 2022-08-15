@@ -554,9 +554,7 @@ def evolution_of_terms(termlink=None):
 @query.route("/defoe_submit", methods=["POST"])
 @swag_from("../docs/query/defoe_submit.yml")
 def defoe_queries():
-    # todo get logged in user
-    # user_id = get_jwt_identity()
-    user_id = "wpa1"
+    user_id = get_jwt_identity()
     
     defoe_q=dict_defoe_queries()
     defoe_selection=request.json.get('defoe_selection')
@@ -659,9 +657,7 @@ def defoe_queries():
 @query.route("/upload", methods=["POST"])
 @swag_from("../docs/query/upload.yml")
 def upload():
-    # todo get logged in user
-    # user_id = get_jwt_identity()
-    user_id = "wpa1"
+    user_id = get_jwt_identity()
     user_folder = os.path.join(files.uploads_path, user_id)
     os.makedirs(user_folder, exist_ok=True)
     
