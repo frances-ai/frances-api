@@ -8,14 +8,14 @@ CREATE TABLE IF NOT EXISTS Users (
   createdAt TIMESTAMP WITHOUT TIME ZONE NOT NULL
                                    DEFAULT (current_timestamp AT TIME ZONE 'UTC'),
   updatedAt TIMESTAMP WITHOUT TIME ZONE,
-  status VARCHAR (255) NOT NULL DEFAULT 'active' CHECK (status IN ('active', 'pending', 'deleted'))
+  status VARCHAR (20) NOT NULL DEFAULT 'active' CHECK (status IN ('active', 'pending', 'deleted'))
 );
 
 CREATE TABLE IF NOT EXISTS Submissions (
   submissionID UUID PRIMARY KEY NOT NULL,
   userID UUID NOT NULL,
   submissionName VARCHAR (255) NOT NULL,
-  result text NOT NULL,
+  result TEXT NOT NULL,
   error VARCHAR (255) NOT NULL,
 
   submitTime TIMESTAMP WITHOUT TIME ZONE NOT NULL
