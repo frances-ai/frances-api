@@ -1,4 +1,5 @@
 from flask import Flask, Blueprint, render_template, send_file, request, jsonify, session
+from flask_jwt_extended import jwt_required, get_jwt_identity
 from flask_paginate import Pagination
 from http import HTTPStatus
 import requests
@@ -30,6 +31,7 @@ from ..resolver import get_models, get_defoe, get_files
 from flasgger import swag_from
 
 query = Blueprint("query", __name__, url_prefix="/api/v1/query")
+query_protected = Blueprint("query_protected", __name__, url_prefix="/api/v1/protected/query")
 models = get_models()
 files = get_files()
 
@@ -94,7 +96,7 @@ def term_search(termlink=None):
     limit = offset+per_page
     results_for_render=dict(islice(results.items(),offset, limit))
     pagination = Pagination(page=page, total=len(results), per_page=page_size, search=False)
-    
+
     return jsonify({
         "results": results_for_render,
         "pagination": pagination_to_dict(pagination),
@@ -132,7 +134,7 @@ def eb_details():
                       "statistics": ed_st,
                     },
                 }), HTTPStatus.OK
-    
+
     return jsonify({
         "editionList": edList,
     }), HTTPStatus.OK
@@ -166,7 +168,7 @@ def visualization_resources(termlink=None, termtype=None):
                 "results": g_results,
                 "uri": uri,
             }), HTTPStatus.OK
-    
+
     # handle GET request
     termlink  = request.args.get('termlink', None)
     termtype  = request.args.get('termtype', None)
@@ -179,7 +181,7 @@ def visualization_resources(termlink=None, termtype=None):
             "results": g_results,
             "uri": uri,
         }), HTTPStatus.OK
-    
+
     # return error status code
     return jsonify({
         "message": "termlink not found",
@@ -304,7 +306,7 @@ def similar_terms(termlink=None):
     results_for_render = sanitize_results(results_page)
     pagination = Pagination(page=page, total=len(results), per_page=page_size, search=False)
     ##############
-    
+
     if "free_search" in uri_raw:
         return jsonify({
             "results": results_for_render,
@@ -358,7 +360,7 @@ def topic_modelling(topic_name=None):
         return jsonify({
             "num_topics": num_topics,
         }), HTTPStatus.OK
-    
+
     indices = [i for i, x in enumerate(models.topics_names) if x == topic_name]
     results={}
     for t_i in indices:
@@ -386,7 +388,7 @@ def topic_modelling(topic_name=None):
     results_for_render = sanitize_results(results_page)
     pagination = Pagination(page=page, total=len(results), per_page=page_size, search=False)
     ##############
-    
+
     return jsonify({
         "topic_name": topic_name,
         "results": results_for_render,
@@ -551,14 +553,15 @@ def evolution_of_terms(termlink=None):
     }), HTTPStatus.OK
 
 
-@query.route("/defoe_submit", methods=["POST"])
+@query_protected.route("/defoe_submit", methods=["POST"])
+@jwt_required()
 @swag_from("../docs/query/defoe_submit.yml")
 def defoe_queries():
     user_id = get_jwt_identity()
-    
+
     defoe_q=dict_defoe_queries()
     defoe_selection=request.json.get('defoe_selection')
-    
+
     # build defoe config from request
     config={}
     config["preprocess"]=request.json.get('preprocess')
@@ -654,18 +657,19 @@ def defoe_queries():
     })
 
 
-@query.route("/upload", methods=["POST"])
+@query_protected.route("/upload", methods=["POST"])
+@jwt_required()
 @swag_from("../docs/query/upload.yml")
 def upload():
     user_id = get_jwt_identity()
     user_folder = os.path.join(files.uploads_path, user_id)
     os.makedirs(user_folder, exist_ok=True)
-    
+
     file = request.files['file']
     submit_name = secure_filename(file.filename)
     save_name = time.strftime("%Y%m%d-%H%M%S") + "_" + submit_name
     file.save(os.path.join(user_folder, save_name))
-    
+
     return jsonify({
       "success": True,
       "file": save_name,

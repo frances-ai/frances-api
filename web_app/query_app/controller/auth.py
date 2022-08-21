@@ -9,7 +9,8 @@ from werkzeug.security import generate_password_hash, check_password_hash
 from ..db import User
 from ..resolver import get_database
 
-auth = Blueprint("auth", __name__, url_prefix="/api/v1")
+auth = Blueprint("auth", __name__, url_prefix="/api/v1/auth")
+auth_protected = Blueprint("auth_protected", __name__, url_prefix="/api/v1/protected/auth")
 database = get_database()
 
 def validate_register_info(first_name, last_name, email, password):
@@ -26,7 +27,7 @@ def validate_register_info(first_name, last_name, email, password):
         raise Exception('Email has been registered')
 
 
-@auth.post("/auth/emailRegistered")
+@auth.post("/emailRegistered")
 @swag_from("../docs/auth/emailRegistered.yml")
 def email_registered():
     email = request.json['email']
@@ -44,7 +45,7 @@ def email_registered():
     }), HTTPStatus.OK
 
 
-@auth.post("/auth/register")
+@auth.post("/register")
 @swag_from("../docs/auth/register.yml")
 def register():
     first_name = request.json['first_name']
@@ -74,7 +75,7 @@ def register():
     }), HTTPStatus.OK
 
 
-@auth.post("/auth/login")
+@auth.post("/login")
 @swag_from("../docs/auth/login.yml")
 def login():
     email = request.json.get('email', '')
@@ -113,7 +114,7 @@ def login():
     }), HTTPStatus.UNAUTHORIZED
 
 
-@auth.post('/auth/logout')
+@auth.post('/logout')
 @swag_from("../docs/auth/logout.yml")
 def logout():
     response = jsonify({'logout': True})
@@ -121,7 +122,7 @@ def logout():
     return response, HTTPStatus.OK
 
 
-@auth.post("/auth/token/refresh")
+@auth.post("/token/refresh")
 @jwt_required(refresh=True)
 @swag_from("../docs/auth/refresh.yml")
 def refresh_token():
@@ -134,7 +135,7 @@ def refresh_token():
     return response, HTTPStatus.OK
 
 
-@auth.get("/protected/auth/profile")
+@auth_protected.get("/auth/profile")
 @jwt_required()
 @swag_from("../docs/auth/profile.yml")
 def profile():

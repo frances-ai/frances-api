@@ -8,8 +8,8 @@ from flask_cors import CORS
 from flask_jwt_extended import JWTManager
 
 from .config_folder.swagger import swagger_config, template
-from .controller.auth import auth
-from .controller.query import query
+from .controller.auth import auth, auth_protected
+from .controller.query import query, query_protected
 
 from .flask_config import DefaultFlaskConfig
 
@@ -29,8 +29,9 @@ def create_app(test_config=None):
 
     # Register blueprints
     app.register_blueprint(auth)
+    app.register_blueprint(auth_protected)
     app.register_blueprint(query)
-
+    app.register_blueprint(query_protected)
     # Enable CORS
     CORS(app)
     return app
