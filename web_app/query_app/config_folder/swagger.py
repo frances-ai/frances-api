@@ -8,14 +8,20 @@ template = {
     "basePath": "/api/v1",
 
     # Uncomment following lines if explict header authorization is required
-    # "securityDefinitions": {
-    #    "Bearer": {
-    #        "type": "apiKey",
-    #        "name": "Authorization",
-    #        "in": "header",
-    #        "description": "Example: Bearer {token}"
-    #    }
-    # }
+    "securityDefinitions": {
+        "csrf_access_token": {
+            "type": "apiKey",
+            "name": "X-CSRF-TOKEN",
+            "in": "header",
+            "description": "Example: {token}"
+        },
+        "csrf_refresh_token": {
+            "type": "apiKey",
+            "name": "X-CSRF-TOKEN",
+            "in": "header",
+            "description": "Example: {token}"
+        }
+    }
 }
 
 swagger_config = {

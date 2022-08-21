@@ -2,6 +2,8 @@ User profile
 ---
 tags:
   - Authentication
+security:
+  - csrf_access_token: ['X-CSRF-TOKEN']
 
 responses:
   200:

@@ -2,6 +2,8 @@ Defoe Submit
 ---
 tags:
   - Query
+security:
+  - csrf_access_token: ['X-CSRF-TOKEN']
 consumes:
   - application/json
 parameters:

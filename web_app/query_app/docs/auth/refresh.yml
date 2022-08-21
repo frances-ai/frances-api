@@ -2,6 +2,8 @@ User access token refresh
 ---
 tags:
   - Authentication
+security:
+  - csrf_refresh_token: ['X-CSRF-TOKEN']
 
 responses:
   200:

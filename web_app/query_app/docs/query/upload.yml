@@ -2,6 +2,8 @@ Upload
 ---
 tags:
   - Query
+security:
+  - csrf_access_token: ['X-CSRF-TOKEN']
 parameters:
   - in: formData
     name: file
