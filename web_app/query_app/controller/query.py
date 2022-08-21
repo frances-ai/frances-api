@@ -1,4 +1,4 @@
-from flask import Flask, Blueprint, render_template, send_file, request, jsonify, session
+from flask import Flask, Blueprint, render_template, send_file, request, jsonify, session, current_app
 from flask_jwt_extended import jwt_required, get_jwt_identity
 from flask_paginate import Pagination
 from http import HTTPStatus
@@ -684,10 +684,12 @@ def defoe_list():
     })
 
 
-@query.route("/defoe_status", methods=["GET"])
+@query.route("/defoe_status", methods=["POST"])
 @swag_from("../docs/query/defoe_status.yml")
 def defoe_status():
-    job_id = request.args.get('id')
+    job_id = request.json.get("id")
+    current_app.logger.info('defoe_status')
+    current_app.logger.info('job_id: %s', job_id)
     job = get_defoe().get_status(job_id)
     with job._lock:
         return jsonify({

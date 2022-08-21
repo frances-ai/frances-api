@@ -3,11 +3,19 @@ Defoe status
 tags:
   - Query
 parameters:
-  - in: query
-    name: id
-    type: string
-    description: The ID of the defoe job to get the status of.
+  - name: id
+    description:  The ID of the defoe job to get the status of.
+    in: body
     required: true
+    schema:
+      type: object
+      required:
+        - id
+      properties:
+        email:
+          type: string
+          example: string
+
 responses:
   201:
     description: Job status
