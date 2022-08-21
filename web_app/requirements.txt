@@ -3,7 +3,7 @@ rdflib
 flask_paginate
 SPARQLWrapper
 lxml
-bertopic
+bertopic==0.10.0
 nltk>=3.4
 pep8>=1.7.0
 pillow>=4.0.0
