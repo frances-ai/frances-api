@@ -135,7 +135,7 @@ def refresh_token():
     return response, HTTPStatus.OK
 
 
-@auth_protected.get("/auth/profile")
+@auth_protected.get("/profile")
 @jwt_required()
 @swag_from("../docs/auth/profile.yml")
 def profile():
