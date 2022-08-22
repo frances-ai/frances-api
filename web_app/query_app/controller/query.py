@@ -567,8 +567,8 @@ def defoe_queries():
     config["preprocess"]=request.json.get('preprocess')
     config["target_sentences"]= request.json.get('target_sentences').split(",")
     config["target_filter"] = request.json.get('target_filter')
-    config["start_year"]= request.json.get('start_year')
-    config["end_year"]= request.json.get('end_year')
+    config["start_year"]= request.json.get('start_year', '1771')
+    config["end_year"]= request.json.get('end_year', '1771')
     config["os_type"]="os"
     config["hit_count"] = request.json.get('hit_count')
     config["data"] = os.path.join(files.uploads_path, user_id, request.json.get('file'))
