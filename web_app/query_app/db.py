@@ -80,34 +80,58 @@ class Database:
         self.db.commit()
         return
 
-    def add_submission(self, sub):
-        sql = "INSERT INTO Submissions (submissionID, userID, submissionName, result, error) VALUES (%s, %s, %s, %s, %s);"
-        vals = (sub.id, sub.userID, sub.name, sub.result, sub.error)
+    def add_defoe_query_task(self, task):
+        sql = "INSERT INTO DefoeQueryTasks (taskID, userID, configID, resultFile, progress, errorMsg) VALUES (%s, %s, %s, %s, %s, %s);"
+        vals = (task.id, task.userID, task.configID, task.resultFile, task.progress, task.errorMsg)
 
         cursor = self.db.cursor()
         cursor.execute(sql, vals)
         self.db.commit()
         return
 
-    def update_submission(self, sub):
-        sql = "UPDATE Submissions SET userID=%s, submissionName=%s, result=%s, error=%s WHERE submissionID=%s;"
-        vals = (sub.userID, sub.name, sub.result, sub.error, sub.id)
+    def update_defoe_query_task(self, task):
+        sql = "UPDATE DefoeQueryTasks SET progress=%s, errorMsg=%s WHERE taskID=%s;"
+        vals = (task.progress, task.errorMsg, task.id)
 
         cursor = self.db.cursor()
         cursor.execute(sql, vals)
         self.db.commit()
         return
 
-    def get_submissions(self, userID):
-        sql = "SELECT submissionID, userID, submissionName, result, error, submitTime FROM Submissions WHERE userID=%s;"
+    def get_defoe_query_task_by_taskID(self, taskID):
+        sql = "SELECT * FROM DefoeQueryTasks WHERE taskID=%s;"
         cursor = self.db.cursor()
-        cursor.execute(sql, (userID,))
+        cursor.execute(sql, (taskID,))
 
         records = cursor.fetchall()
-        subs = []
-        for row in records:
-            subs.append(Submission(*row))
-        return subs
+        if len(records) == 0:
+            return None
+
+        record = records[0]
+        return DefoeQueryTask(*record)
+
+    def add_defoe_query_config(self, config):
+        sql = "INSERT INTO  DefoeQueryConfigs(configID, collection, queryType, preprocess, lexiconFile, targetSentences, targetFilter, startYear, endYear, hitCount, snippetWindow)" \
+              " VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s);"
+        vals = (config.id, config.collection, config.queryType, config.preprocess, config.lexiconFile, config.targetSentences,
+                config.targetFilter, config.startYear, config.endYear, config.hitCount, config.window)
+
+        cursor = self.db.cursor()
+        cursor.execute(sql, vals)
+        self.db.commit()
+        return
+
+    def get_defoe_query_config_by_id(self, id):
+        sql = "SELECT * FROM DefoeQueryConfigs WHERE configID=%s;"
+        cursor = self.db.cursor()
+        cursor.execute(sql, (id,))
+
+        records = cursor.fetchall()
+        if len(records) == 0:
+            return None
+
+        record = records[0]
+        return DefoeQueryConfig(*record)
 
 
 class User:
@@ -124,19 +148,57 @@ class User:
         return User(id, first_name, last_name, email, password)
 
 
-class Submission:
-    def __init__(self, id, userID, name, result, error, time):
+class DefoeQueryConfig:
+    def __init__(self, id, collection, queryType, preprocess, lexiconFile, targetSentences, targetFilter, startYear, endYear,
+                 hitCount, window):
         self.id = id
-        self.userID = userID
-        self.name = name
-        self.result = result
-        self.error = error
-        self.time = time
+        self.collection = collection
+        self.preprocess = preprocess
+        self.queryType = queryType
+        self.lexiconFile = lexiconFile
+        self.targetSentences = targetSentences
+        self.targetFilter = targetFilter
+        self.startYear = startYear
+        self.endYear = endYear
+        self.hitCount = hitCount
+        self.window = window
 
     @staticmethod
-    def create_new(userID, name, result, error):
-        id = uuid.uuid5(uuid.NAMESPACE_URL, namespace + name + str(time.time()))
-        return Submission(id, userID, name, result, error, "")
+    def create_new(collection, queryType, preprocess, lexiconFile, targetSentences, targetFilter, startYear, endYear, hitCount,
+                   window):
+        id = uuid.uuid5(uuid.NAMESPACE_URL, namespace + lexiconFile + str(time.time()))
+        return DefoeQueryConfig(id, collection, queryType, preprocess, lexiconFile, targetSentences, targetFilter, startYear, endYear, hitCount,
+                    window)
+
+    def to_dict(self):
+        return {
+            "collection": self.collection,
+            "queryType": self.queryType,
+            "preprocess": self.preprocess,
+            "lexiconFile": self.lexiconFile,
+            "targetSentences": self.targetSentences,
+            "targetFilter": self.targetFilter,
+            "startYear": self.startYear,
+            "endYear": self.endYear,
+            "hitCount": self.hitCount,
+            "window": self.window
+        }
+
+
+class DefoeQueryTask:
+    def __init__(self, id, userID, configID, resultFile, progress, errorMsg, submitTime):
+        self.id = id
+        self.userID = userID
+        self.configID = configID
+        self.resultFile = resultFile
+        self.progress = progress
+        self.errorMsg = errorMsg
+        self.submitTime = submitTime
+
+    @staticmethod
+    def create_new(userID, configID, resultFile, errorMsg):
+        id = uuid.uuid5(uuid.NAMESPACE_URL, namespace + resultFile + str(time.time()))
+        return DefoeQueryTask(id, userID, configID, resultFile, 0, errorMsg, "")
 
 
 if __name__ == "__main__":
@@ -147,7 +209,7 @@ if __name__ == "__main__":
 
     db = Database(config)
 
-    user = User.create_new("wilfrid-askins", "wilfridaskins@gmail.com", "abcabc")
+    user = User.create_new("wilfrid", "kins", "in@gmail.com", "abcabc")
     db.add_user(user)
 
     u = db.get_user_by_id(user.id)
@@ -159,24 +221,22 @@ if __name__ == "__main__":
     u = db.get_user_by_email('damonyu97@hotmail.com')
     print(u)
 
-    sub = Submission.create_new(user.id, "basic-job-1", "result1234", "")
-    db.add_submission(sub)
+    # Mock Defoe Query Task Submit
 
-    sub1 = Submission.create_new(user.id, "basic-job-2", "", "")
-    db.add_submission(sub1)
+    # Save config
+    config = DefoeQueryConfig.create_new("eb", "public", "None",  "lexiconpath", "", "any", 1771, 1771, "word", 10);
+    db.add_defoe_query_config(config)
 
-    for sub in db.get_submissions(user.id):
-        print("submission")
-        print(sub.id)
-        print(sub.result)
-        print(sub.error)
+    # Save Task
+    task = DefoeQueryTask.create_new(user.id, config.id, "", 0, "")
+    db.add_defoe_query_task(task)
 
-    sub1.result = "blahblah"
-    sub1.error = "error job failed"
-    db.update_submission(sub1)
+    taskInfo = db.get_defoe_query_task_by_taskID(task.id)
+    print(taskInfo.submitTime)
+    print(taskInfo.progress)
 
-    for sub in db.get_submissions(user.id):
-        print("submission")
-        print(sub.id)
-        print(sub.result)
-        print(sub.error)
+    taskInfo.progress = 2
+    db.update_defoe_query_task(taskInfo)
+
+    updatedTask = db.get_defoe_query_task_by_taskID(taskInfo.id)
+    print(updatedTask.progress)

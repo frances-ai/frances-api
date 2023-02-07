@@ -1,100 +1,92 @@
-from flask import Flask, Blueprint, render_template, send_file, request, jsonify, session, current_app
+from flask import Blueprint, send_file, request, jsonify, session, current_app
 from flask_jwt_extended import jwt_required, get_jwt_identity
 from flask_paginate import Pagination
 from http import HTTPStatus
-import requests
-import traceback
 from .sparql_queries import *
-import itertools
 from itertools import islice
-from sklearn.metrics.pairwise import cosine_similarity
 
 from .utils import calculating_similarity_text, get_topic_name, retrieving_similariy
 from .utils import plot_taxonomy_freq, preprocess_lexicon, dict_defoe_queries, read_results
 from .utils import pagination_to_dict, sanitize_results, figure_to_dict
 
 import time, os, yaml
-import pickle
-from tqdm import tqdm
 from zipfile import *
-from matplotlib.backends.backend_agg import FigureCanvasAgg as FigureCanvas
-from matplotlib.figure import Figure
 from operator import itemgetter
 
 from werkzeug.utils import secure_filename
-from werkzeug.datastructures import FileStorage
 
-from io import BytesIO
-import base64
-
-from ..resolver import get_models, get_defoe, get_files
+from ..resolver import get_models, get_defoe, get_files, get_database
 from flasgger import swag_from
+
+from ..db import DefoeQueryConfig, DefoeQueryTask
 
 query = Blueprint("query", __name__, url_prefix="/api/v1/query")
 query_protected = Blueprint("query_protected", __name__, url_prefix="/api/v1/protected/query")
 models = get_models()
 files = get_files()
+database = get_database()
 
 
-@query.route("/term_search/<string:termlink>",  methods=['GET'])
-@query.route("/term_search",  methods=['POST'])
+@query.route("/term_search/<string:termlink>", methods=['GET'])
+@query.route("/term_search", methods=['POST'])
 @swag_from("../docs/query/term_search.yml")
 def term_search(termlink=None):
     if request.method == "POST":
         term = request.json.get("search")
         if term == "":
             term = "AABAM"
-        term=term.upper()
+        term = term.upper()
         session['term'] = term
 
-    if termlink!=None:
+    if termlink != None:
         term = termlink
         session['term'] = term
     else:
-        term=session.get('term')
+        term = session.get('term')
 
-    headers=["Year", "Edition", "Volume", "Start Page", "End Page", "Term Type", "Definition/Summary", "Related Terms", "Topic Modelling", "Sentiment_Score", "Advanced Options"]
+    headers = ["Year", "Edition", "Volume", "Start Page", "End Page", "Term Type", "Definition/Summary",
+               "Related Terms", "Topic Modelling", "Sentiment_Score", "Advanced Options"]
 
-    results =get_definition(term, models.documents, models.uris)
-    topics_vis=[]
+    results = get_definition(term, models.documents, models.uris)
+    topics_vis = []
     for key, value in results.items():
         try:
-            index_uri=models.uris.index(key)
+            index_uri = models.uris.index(key)
             topic_name = models.topics_names[index_uri]
-            score='%.2f'%models.sentiment_terms[index_uri][0]['score']
+            score = '%.2f' % models.sentiment_terms[index_uri][0]['score']
             if "LABEL_0" in models.sentiment_terms[index_uri][0]['label']:
-               label="POSITIVE"
-               sentiment = label+"_"+score
+                label = "POSITIVE"
+                sentiment = label + "_" + score
             elif "LABEL_1" in models.sentiment_terms[index_uri][0]['label']:
-               label="NEGATIVE"
-               sentiment = label+"_"+score
+                label = "NEGATIVE"
+                sentiment = label + "_" + score
             else:
-                sentiment = models.sentiment_terms[index_uri][0]['label']+"_"+score
+                sentiment = models.sentiment_terms[index_uri][0]['label'] + "_" + score
             if models.topics[index_uri] not in topics_vis:
                 topics_vis.append(models.topics[index_uri])
             topic_name = get_topic_name(index_uri, models.topics, models.topic_model)
-            topic_name=topic_name.replace(" ", "_")
+            topic_name = topic_name.replace(" ", "_")
             print("---- topic_name is %s" % topic_name)
             value.append(topic_name)
             value.append(sentiment)
             value.append(key)
         except:
-             pass
+            pass
     if len(topics_vis) >= 1:
-        bar_plot=models.topic_model.visualize_barchart(topics_vis, n_words=10)
+        bar_plot = models.topic_model.visualize_barchart(topics_vis, n_words=10)
     else:
-        bar_plot=None
+        bar_plot = None
     if len(topics_vis) >= 2:
-        heatmap_plot=models.topic_model.visualize_heatmap(topics_vis)
+        heatmap_plot = models.topic_model.visualize_heatmap(topics_vis)
     else:
-        heatmap_plot=None
+        heatmap_plot = None
 
     page = int(request.json.get("page", 1))
-    page_size=2
+    page_size = 2
     per_page = 2
-    offset = (page-1) * per_page
-    limit = offset+per_page
-    results_for_render=dict(islice(results.items(),offset, limit))
+    offset = (page - 1) * per_page
+    limit = offset + per_page
+    results_for_render = dict(islice(results.items(), offset, limit))
     pagination = Pagination(page=page, total=len(results), per_page=page_size, search=False)
 
     return jsonify({
@@ -107,33 +99,33 @@ def term_search(termlink=None):
     }), HTTPStatus.OK
 
 
-@query.route("/eb_details",  methods=['POST'])
+@query.route("/eb_details", methods=['POST'])
 @swag_from("../docs/query/eb_details.yml")
 def eb_details():
-    edList=get_editions()
+    edList = get_editions()
     if 'edition_selection' in request.json and 'volume_selection' in request.json:
-        ed_raw=request.json.get('edition_selection')
-        vol_raw=request.json.get('volume_selection')
-        if vol_raw !="" and ed_raw !="":
-            ed_uri="<"+ed_raw+">"
-            ed_r=get_editions_details(ed_uri)
-            vol_uri="<"+vol_raw+">"
-            ed_v=get_volume_details(vol_uri)
-            ed_st=get_vol_statistics(vol_uri)
-            ed_name=edList[ed_raw]
-            vol_name=get_vol_by_vol_uri(vol_uri)
+        ed_raw = request.json.get('edition_selection')
+        vol_raw = request.json.get('volume_selection')
+        if vol_raw != "" and ed_raw != "":
+            ed_uri = "<" + ed_raw + ">"
+            ed_r = get_editions_details(ed_uri)
+            vol_uri = "<" + vol_raw + ">"
+            ed_v = get_volume_details(vol_uri)
+            ed_st = get_vol_statistics(vol_uri)
+            ed_name = edList[ed_raw]
+            vol_name = get_vol_by_vol_uri(vol_uri)
             return jsonify({
-                    "editionList": edList,
-                    "edition": {
-                      "name": ed_name,
-                      "details": ed_r,
-                    },
-                    "volume": {
-                      "name": vol_name,
-                      "details": ed_v,
-                      "statistics": ed_st,
-                    },
-                }), HTTPStatus.OK
+                "editionList": edList,
+                "edition": {
+                    "name": ed_name,
+                    "details": ed_r,
+                },
+                "volume": {
+                    "name": vol_name,
+                    "details": ed_v,
+                    "statistics": ed_st,
+                },
+            }), HTTPStatus.OK
 
     return jsonify({
         "editionList": edList,
@@ -143,12 +135,12 @@ def eb_details():
 @query.route("/vol_details", methods=['POST'])
 @swag_from("../docs/query/vol_details.yml")
 def vol_details():
-    uri_raw=request.json.get('edition_selection')
-    uri="<"+uri_raw+">"
-    volList=get_volumes(uri)
+    uri_raw = request.json.get('edition_selection')
+    uri = "<" + uri_raw + ">"
+    volList = get_volumes(uri)
     OutputArray = []
     for key, value in sorted(volList.items(), key=lambda item: item[1]):
-        outputObj = { 'id':key , 'name': value }
+        outputObj = {'id': key, 'name': value}
         OutputArray.append(outputObj)
     return jsonify(OutputArray)
 
@@ -158,25 +150,25 @@ def vol_details():
 def visualization_resources(termlink=None, termtype=None):
     if request.method == "POST":
         if 'resource_uri' in request.json:
-            uri_raw=request.json.get('resource_uri').strip().replace("<","").replace(">","")
+            uri_raw = request.json.get('resource_uri').strip().replace("<", "").replace(">", "")
             if uri_raw == "":
-                uri="<https://w3id.org/eb/i/Article/992277653804341_144133901_AABAM_0>"
+                uri = "<https://w3id.org/eb/i/Article/992277653804341_144133901_AABAM_0>"
             else:
-                uri="<"+uri_raw+">"
-            g_results=describe_resource(uri)
+                uri = "<" + uri_raw + ">"
+            g_results = describe_resource(uri)
             return jsonify({
                 "results": g_results,
                 "uri": uri,
             }), HTTPStatus.OK
 
     # handle GET request
-    termlink  = request.args.get('termlink', None)
-    termtype  = request.args.get('termtype', None)
-    if termlink!=None:
+    termlink = request.args.get('termlink', None)
+    termtype = request.args.get('termtype', None)
+    if termlink != None:
         if ">" in termlink:
-            termlink=termlink.split(">")[0]
-        uri="<https://w3id.org/eb/i/"+termtype+"/"+termlink+">"
-        g_results=describe_resource(uri)
+            termlink = termlink.split(">")[0]
+        uri = "<https://w3id.org/eb/i/" + termtype + "/" + termlink + ">"
+        g_results = describe_resource(uri)
         return jsonify({
             "results": g_results,
             "uri": uri,
@@ -191,63 +183,66 @@ def visualization_resources(termlink=None, termtype=None):
 @query.route("/similar_terms", methods=["GET", "POST"])
 @swag_from("../docs/query/similar_terms.yml")
 def similar_terms(termlink=None):
-    uri=""
-    uri_raw=""
-    data_similar=""
-    topics_vis=[]
-    termlink  = request.args.get('termlink', None)
-    termtype  = request.args.get('termtype', None)
-    if termlink!=None:
+    uri = ""
+    uri_raw = ""
+    data_similar = ""
+    topics_vis = []
+    termlink = request.args.get('termlink', None)
+    termtype = request.args.get('termtype', None)
+    if termlink != None:
         if ">" in termlink:
-            termlink=termlink.split(">")[0]
-        uri="<https://w3id.org/eb/i/"+termtype+"/"+termlink+">"
-        uri_raw=uri.replace("<","").replace(">","")
+            termlink = termlink.split(">")[0]
+        uri = "<https://w3id.org/eb/i/" + termtype + "/" + termlink + ">"
+        uri_raw = uri.replace("<", "").replace(">", "")
         session['uri_raw'] = uri_raw
         session['uri'] = uri
         session["data_similar"] = ""
 
     elif 'resource_uri' in request.json:
-        data_similar=request.json.get('resource_uri')
+        data_similar = request.json.get('resource_uri')
         if "https://" in data_similar or "w3id" in data_similar:
-            uri_raw=data_similar.strip().replace("<","").replace(">","")
+            uri_raw = data_similar.strip().replace("<", "").replace(">", "")
         elif data_similar == "":
-            uri_raw="https://w3id.org/eb/i/Article/992277653804341_144133901_AABAM_0"
+            uri_raw = "https://w3id.org/eb/i/Article/992277653804341_144133901_AABAM_0"
         else:
-            uri_raw=""
+            uri_raw = ""
             session['uri_raw'] = "free_search"
-        if uri_raw!="":
-            uri="<"+uri_raw+">"
+        if uri_raw != "":
+            uri = "<" + uri_raw + ">"
             session['uri_raw'] = uri_raw
         session['uri'] = uri
         session["data_similar"] = data_similar
 
     if not uri:
-        uri=session.get('uri')
-        uri_raw=session.get('uri_raw')
+        uri = session.get('uri')
+        uri_raw = session.get('uri_raw')
         data_similar = session.get('data_similar')
 
     if "free_search" in uri_raw:
-        results, topics_vis=calculating_similarity_text(data_similar,models.text_embeddings, models.model, models.terms_info, models.documents, models.uris, models.topics_names, models.topics, models.sentiment_terms, -1)
+        results, topics_vis = calculating_similarity_text(data_similar, models.text_embeddings, models.model,
+                                                          models.terms_info, models.documents, models.uris,
+                                                          models.topics_names, models.topics, models.sentiment_terms,
+                                                          -1)
 
     else:
-        term, definition, enum, year, vnum  =get_document(uri)
-        index_uri=models.uris.index(uri_raw)
-        t_name=models.topics_names[index_uri]
-        score='%.2f'%models.sentiment_terms[index_uri][0]['score']
+        term, definition, enum, year, vnum = get_document(uri)
+        index_uri = models.uris.index(uri_raw)
+        t_name = models.topics_names[index_uri]
+        score = '%.2f' % models.sentiment_terms[index_uri][0]['score']
         if "LABEL_0" in models.sentiment_terms[index_uri][0]['label']:
-            label="POSITIVE"
-            t_sentiment = label+"_"+score
+            label = "POSITIVE"
+            t_sentiment = label + "_" + score
         elif "LABEL_1" in models.sentiment_terms[index_uri][0]['label']:
-            label="NEGATIVE"
-            t_sentiment = label+"_"+score
+            label = "NEGATIVE"
+            t_sentiment = label + "_" + score
         else:
-            t_sentiment = models.sentiment_terms[index_uri][0]['label']+"_"+score
+            t_sentiment = models.sentiment_terms[index_uri][0]['label'] + "_" + score
 
-        print("----> index_uri is %s" %index_uri)
-        results={}
-        #results_sim_first=retrieving_similariy(paraphrases_index_first, index_uri, paraphrases)
-        #r_similar_index=[]
-        #for r_sim in results_sim_first:
+        print("----> index_uri is %s" % index_uri)
+        results = {}
+        # results_sim_first=retrieving_similariy(paraphrases_index_first, index_uri, paraphrases)
+        # r_similar_index=[]
+        # for r_sim in results_sim_first:
         #    rank, i, similar_index = r_sim
         #    r_similar_index.append(similar_index)
         #    print(similar_index)
@@ -264,8 +259,8 @@ def similar_terms(termlink=None):
         #    if topics[similar_index] not in topics_vis:
         #        topics_vis.append(topics[similar_index])
         #    results[uris[similar_index]]=[models.terms_info[similar_index][1],models.terms_info[similar_index][2], models.terms_info[similar_index][4], models.terms_info[similar_index][0], documents[similar_index], topic_name, rank, sentiment]
-        #results_sim_second=retrieving_similariy(paraphrases_index_second, index_uri, paraphrases)
-        #for r_sim in results_sim_second:
+        # results_sim_second=retrieving_similariy(paraphrases_index_second, index_uri, paraphrases)
+        # for r_sim in results_sim_second:
         #    rank, similar_index, j = r_sim
         #    if similar_index not in r_similar_index:
         #        r_similar_index.append(similar_index)
@@ -283,26 +278,29 @@ def similar_terms(termlink=None):
         #        if topics[similar_index] not in topics_vis:
         #            topics_vis.append(topics[similar_index])
         #        results[uris[similar_index]]=[models.terms_info[similar_index][1],models.terms_info[similar_index][2], models.terms_info[similar_index][4], models.terms_info[similar_index][0], documents[similar_index], topic_name, rank, sentiment]
-        #if len(r_similar_index)==0:
-        results, topics_vis=calculating_similarity_text(definition,models.text_embeddings, models.model, models.terms_info, models.documents, models.uris, models.topics_names, models.topics, models.sentiment_terms, index_uri)
+        # if len(r_similar_index)==0:
+        results, topics_vis = calculating_similarity_text(definition, models.text_embeddings, models.model,
+                                                          models.terms_info, models.documents, models.uris,
+                                                          models.topics_names, models.topics, models.sentiment_terms,
+                                                          index_uri)
     if len(topics_vis) >= 1:
-        bar_plot=models.topic_model.visualize_barchart(topics_vis, n_words=10)
+        bar_plot = models.topic_model.visualize_barchart(topics_vis, n_words=10)
     if len(topics_vis) >= 1:
-        bar_plot=models.topic_model.visualize_barchart(topics_vis, n_words=10)
+        bar_plot = models.topic_model.visualize_barchart(topics_vis, n_words=10)
     else:
-        bar_plot=None
+        bar_plot = None
     if len(topics_vis) >= 2:
-        heatmap_plot=models.topic_model.visualize_heatmap(topics_vis)
+        heatmap_plot = models.topic_model.visualize_heatmap(topics_vis)
     else:
-        heatmap_plot=None
+        heatmap_plot = None
 
     #### Pagination ###
     page = int(request.json.get("page", 1))
-    page_size=10
+    page_size = 10
     per_page = 10
-    offset = (page-1) * per_page
-    limit = offset+per_page
-    results_page = dict(islice(results.items(),offset, limit))
+    offset = (page - 1) * per_page
+    limit = offset + per_page
+    results_page = dict(islice(results.items(), offset, limit))
     results_for_render = sanitize_results(results_page)
     pagination = Pagination(page=page, total=len(results), per_page=page_size, search=False)
     ##############
@@ -334,57 +332,58 @@ def similar_terms(termlink=None):
 @query.route("/topic_modelling", methods=["GET", "POST"])
 @swag_from("../docs/query/topic_modelling.yml")
 def topic_modelling(topic_name=None):
-    topic_name  = request.args.get('topic_name', None)
-    num_topics=len(models.t_names)-2
+    topic_name = request.args.get('topic_name', None)
+    num_topics = len(models.t_names) - 2
     if topic_name == None:
         if 'topic_name' in request.json:
-            topic_name=request.json.get('topic_name')
-            if topic_name=="":
-                topic_name="0_hindustan_of_hindustan_hindustan_in_district"
+            topic_name = request.json.get('topic_name')
+            if topic_name == "":
+                topic_name = "0_hindustan_of_hindustan_hindustan_in_district"
             else:
                 if topic_name not in models.t_names:
-                    full_topic_name=""
-                    number=topic_name+"_"
+                    full_topic_name = ""
+                    number = topic_name + "_"
                     for x in models.t_names:
                         if x.startswith(number):
-                            full_topic_name=x
+                            full_topic_name = x
                     if full_topic_name:
-                        topic_name=full_topic_name
+                        topic_name = full_topic_name
                     else:
-                        topic_name="0_hindustan_of_hindustan_hindustan_in_district"
+                        topic_name = "0_hindustan_of_hindustan_hindustan_in_district"
             session['topic_name'] = topic_name
 
     if not topic_name:
-         topic_name=session.get('topic_name')
+        topic_name = session.get('topic_name')
     if not topic_name:
         return jsonify({
             "num_topics": num_topics,
         }), HTTPStatus.OK
 
     indices = [i for i, x in enumerate(models.topics_names) if x == topic_name]
-    results={}
+    results = {}
     for t_i in indices:
-        score='%.2f'%models.sentiment_terms[t_i][0]['score']
+        score = '%.2f' % models.sentiment_terms[t_i][0]['score']
         if "LABEL_0" in models.sentiment_terms[t_i][0]['label']:
-            label="POSITIVE"
-            sentiment = label+"_"+score
+            label = "POSITIVE"
+            sentiment = label + "_" + score
         elif "LABEL_1" in models.sentiment_terms[t_i][0]['label']:
-            label="NEGATIVE"
-            sentiment = label+"_"+score
+            label = "NEGATIVE"
+            sentiment = label + "_" + score
         else:
-           sentiment = models.sentiment_terms[t_i][0]['label']+"_"+score
-        results[models.uris[t_i]]=[models.terms_info[t_i][1],models.terms_info[t_i][2], models.terms_info[t_i][4], models.terms_info[t_i][0], models.documents[t_i], sentiment]
-    num_results=len(indices)
-    first_topic=models.topics[indices[0]]
-    bar_plot=models.topic_model.visualize_barchart([first_topic], n_words=10)
+            sentiment = models.sentiment_terms[t_i][0]['label'] + "_" + score
+        results[models.uris[t_i]] = [models.terms_info[t_i][1], models.terms_info[t_i][2], models.terms_info[t_i][4],
+                                     models.terms_info[t_i][0], models.documents[t_i], sentiment]
+    num_results = len(indices)
+    first_topic = models.topics[indices[0]]
+    bar_plot = models.topic_model.visualize_barchart([first_topic], n_words=10)
 
     #### Pagination ###
     page = int(request.json.get("page", 1))
-    page_size=10
+    page_size = 10
     per_page = 10
-    offset = (page-1) * per_page
-    limit = offset+per_page
-    results_page = dict(islice(results.items(),offset, limit))
+    offset = (page - 1) * per_page
+    limit = offset + per_page
+    results_page = dict(islice(results.items(), offset, limit))
     results_for_render = sanitize_results(results_page)
     pagination = Pagination(page=page, total=len(results), per_page=page_size, search=False)
     ##############
@@ -402,141 +401,147 @@ def topic_modelling(topic_name=None):
 @query.route("/spelling_checker", methods=["GET", "POST"])
 @swag_from("../docs/query/spelling_checker.yml")
 def spelling_checker(termlink=None):
-    uri_raw=""
-    uri=""
-    termlink  = request.args.get('termlink', None)
-    termtype  = request.args.get('termtype', None)
-    if termlink!=None:
+    uri_raw = ""
+    uri = ""
+    termlink = request.args.get('termlink', None)
+    termtype = request.args.get('termtype', None)
+    if termlink != None:
         if ">" in termlink:
-            termlink=termlink.split(">")[0]
-        uri="<https://w3id.org/eb/i/"+termtype+"/"+termlink+">"
-        uri_raw=uri.replace("<","").replace(">","")
+            termlink = termlink.split(">")[0]
+        uri = "<https://w3id.org/eb/i/" + termtype + "/" + termlink + ">"
+        uri_raw = uri.replace("<", "").replace(">", "")
 
     elif 'resource_uri' in request.json:
-        uri_checker=request.json.get('resource_uri')
+        uri_checker = request.json.get('resource_uri')
         if "https://" in uri_checker or "w3id" in uri_checker:
-            uri_raw=uri_checker.strip().replace("<","").replace(">","")
-            uri="<"+uri_raw+">"
+            uri_raw = uri_checker.strip().replace("<", "").replace(">", "")
+            uri = "<" + uri_raw + ">"
         elif uri_checker == "":
-            uri_raw="https://w3id.org/eb/i/Article/992277653804341_144133901_AABAM_0"
-            uri="<"+uri_raw+">"
+            uri_raw = "https://w3id.org/eb/i/Article/992277653804341_144133901_AABAM_0"
+            uri = "<" + uri_raw + ">"
 
     if not uri:
         return jsonify({
-          "message": "no term given"
+            "message": "no term given"
         }), HTTPStatus.BAD_REQUEST
     else:
-        term, definition, enum, year, vnum=get_document(uri)
-        index_uri=models.uris.index(uri_raw)
-        definition=models.documents[index_uri]
-        clean_definition=models.clean_documents[index_uri]
-        results={}
-        results[uri_raw]=[enum,year, vnum, term]
+        term, definition, enum, year, vnum = get_document(uri)
+        index_uri = models.uris.index(uri_raw)
+        definition = models.documents[index_uri]
+        clean_definition = models.clean_documents[index_uri]
+        results = {}
+        results[uri_raw] = [enum, year, vnum, term]
         return jsonify({
-          "results": results,
-          "clean_definition": clean_definition,
-          "definition": definition,
+            "results": results,
+            "clean_definition": clean_definition,
+            "definition": definition,
         }), HTTPStatus.OK
 
 
 @query.route("/evolution_of_terms", methods=["GET", "POST"])
 @swag_from("../docs/query/evolution_of_terms.yml")
 def evolution_of_terms(termlink=None):
-    uri_raw=""
-    uri=""
-    termlink  = request.args.get('termlink', None)
-    termtype  = request.args.get('termtype', None)
-    if termlink!=None:
+    uri_raw = ""
+    uri = ""
+    termlink = request.args.get('termlink', None)
+    termtype = request.args.get('termtype', None)
+    if termlink != None:
         if ">" in termlink:
-            termlink=termlink.split(">")[0]
-        uri="<https://w3id.org/eb/i/"+termtype+"/"+termlink+">"
-        uri_raw=uri.replace("<","").replace(">","")
+            termlink = termlink.split(">")[0]
+        uri = "<https://w3id.org/eb/i/" + termtype + "/" + termlink + ">"
+        uri_raw = uri.replace("<", "").replace(">", "")
 
     elif 'resource_uri' in request.json:
-        uri_checker=request.json.get('resource_uri')
+        uri_checker = request.json.get('resource_uri')
         if "https://" in uri_checker or "w3id" in uri_checker:
-            uri_raw=uri_checker.strip().replace("<","").replace(">","")
-            uri="<"+uri_raw+">"
+            uri_raw = uri_checker.strip().replace("<", "").replace(">", "")
+            uri = "<" + uri_raw + ">"
         elif uri_checker == "":
-            uri_raw="https://w3id.org/eb/i/Article/992277653804341_144133901_AABAM_0"
-            uri="<"+uri_raw+">"
-            print("uri %s!!" %uri)
+            uri_raw = "https://w3id.org/eb/i/Article/992277653804341_144133901_AABAM_0"
+            uri = "<" + uri_raw + ">"
+            print("uri %s!!" % uri)
 
     if not uri:
         return jsonify({
-          "message": "no term given"
+            "message": "no term given"
         }), HTTPStatus.BAD_REQUEST
 
     else:
-        term, definition, enum, year, vnum  =get_document(uri)
-        index_uri=models.uris.index(uri_raw)
-        t_name=models.topics_names[index_uri]
-        score='%.2f'%models.sentiment_terms[index_uri][0]['score']
+        term, definition, enum, year, vnum = get_document(uri)
+        index_uri = models.uris.index(uri_raw)
+        t_name = models.topics_names[index_uri]
+        score = '%.2f' % models.sentiment_terms[index_uri][0]['score']
         if "LABEL_0" in models.sentiment_terms[index_uri][0]['label']:
-            label="POSITIVE"
-            t_sentiment = label+"_"+score
+            label = "POSITIVE"
+            t_sentiment = label + "_" + score
         elif "LABEL_1" in models.sentiment_terms[index_uri][0]['label']:
-            label="NEGATIVE"
-            t_sentiment = label+"_"+score
+            label = "NEGATIVE"
+            t_sentiment = label + "_" + score
         else:
-            t_sentiment = models.sentiment_terms[index_uri][0]['label']+"_"+score
+            t_sentiment = models.sentiment_terms[index_uri][0]['label'] + "_" + score
 
-        print("----> index_uri in term evoultion is is %s" %index_uri)
-        results_sim_first=retrieving_similariy(models.paraphrases_index_first, index_uri, models.paraphrases)
-        results=[]
-        topics_vis=[]
-        r_similar_index=[]
+        print("----> index_uri in term evoultion is is %s" % index_uri)
+        results_sim_first = retrieving_similariy(models.paraphrases_index_first, index_uri, models.paraphrases)
+        results = []
+        topics_vis = []
+        r_similar_index = []
         for r_sim in results_sim_first:
             rank, i, similar_index = r_sim
             r_similar_index.append(similar_index)
             print(similar_index)
-            score='%.2f'%models.sentiment_terms[similar_index][0]['score']
+            score = '%.2f' % models.sentiment_terms[similar_index][0]['score']
             if "LABEL_0" in models.sentiment_terms[similar_index][0]['label']:
-                label="POSITIVE"
-                sentiment = label+"_"+score
+                label = "POSITIVE"
+                sentiment = label + "_" + score
             elif "LABEL_1" in models.sentiment_terms[similar_index][0]['label']:
-                label="NEGATIVE"
-                sentiment = label+"_"+score
+                label = "NEGATIVE"
+                sentiment = label + "_" + score
             else:
-                sentiment = models.sentiment_terms[similar_index][0]['label']+"_"+score
+                sentiment = models.sentiment_terms[similar_index][0]['label'] + "_" + score
             topic_name = models.topics_names[similar_index]
             if models.topics[similar_index] not in topics_vis:
                 topics_vis.append(models.topics[similar_index])
-            results.append([models.uris[similar_index], models.terms_info[similar_index][1],models.terms_info[similar_index][2], models.terms_info[similar_index][4], models.terms_info[similar_index][0], models.documents[similar_index], topic_name, rank, sentiment])
-        results_sim_second=retrieving_similariy(models.paraphrases_index_second, index_uri, models.paraphrases)
+            results.append(
+                [models.uris[similar_index], models.terms_info[similar_index][1], models.terms_info[similar_index][2],
+                 models.terms_info[similar_index][4], models.terms_info[similar_index][0],
+                 models.documents[similar_index], topic_name, rank, sentiment])
+        results_sim_second = retrieving_similariy(models.paraphrases_index_second, index_uri, models.paraphrases)
         for r_sim in results_sim_second:
             rank, similar_index, j = r_sim
             if similar_index not in r_similar_index:
                 r_similar_index.append(similar_index)
                 print(similar_index)
-                score='%.2f'%models.sentiment_terms[similar_index][0]['score']
+                score = '%.2f' % models.sentiment_terms[similar_index][0]['score']
                 if "LABEL_0" in models.sentiment_terms[similar_index][0]['label']:
-                    label="POSITIVE"
-                    sentiment = label+"_"+score
+                    label = "POSITIVE"
+                    sentiment = label + "_" + score
                 elif "LABEL_1" in models.sentiment_terms[similar_index][0]['label']:
-                    label="NEGATIVE"
-                    sentiment = label+"_"+score
+                    label = "NEGATIVE"
+                    sentiment = label + "_" + score
                 else:
-                    sentiment = models.sentiment_terms[similar_index][0]['label']+"_"+score
+                    sentiment = models.sentiment_terms[similar_index][0]['label'] + "_" + score
                 topic_name = models.topics_names[similar_index]
                 if models.topics[similar_index] not in topics_vis:
                     topics_vis.append(models.topics[similar_index])
-                results.append([models.uris[similar_index], models.terms_info[similar_index][1],models.terms_info[similar_index][2], models.terms_info[similar_index][4], models.terms_info[similar_index][0], models.documents[similar_index], topic_name, rank, sentiment])
+                results.append([models.uris[similar_index], models.terms_info[similar_index][1],
+                                models.terms_info[similar_index][2], models.terms_info[similar_index][4],
+                                models.terms_info[similar_index][0], models.documents[similar_index], topic_name, rank,
+                                sentiment])
 
-    results_sorted=[]
-    results_sorted=sorted(results, key=itemgetter(2))
-    results_dic_sorted={}
+    results_sorted = []
+    results_sorted = sorted(results, key=itemgetter(2))
+    results_dic_sorted = {}
     for r in results_sorted:
-        results_dic_sorted[r[0]]=r[1:]
+        results_dic_sorted[r[0]] = r[1:]
 
     if len(topics_vis) >= 1:
-        bar_plot=models.topic_model.visualize_barchart(topics_vis, n_words=10)
+        bar_plot = models.topic_model.visualize_barchart(topics_vis, n_words=10)
     else:
-        bar_plot=None
+        bar_plot = None
     if len(topics_vis) >= 2:
-        heatmap_plot=models.topic_model.visualize_heatmap(topics_vis)
+        heatmap_plot = models.topic_model.visualize_heatmap(topics_vis)
     else:
-        heatmap_plot=None
+        heatmap_plot = None
 
     return jsonify({
         "results": sanitize_results(results_dic_sorted),
@@ -554,22 +559,22 @@ def evolution_of_terms(termlink=None):
 
 
 @query_protected.route("/defoe_submit", methods=["POST"])
-@jwt_required()
 @swag_from("../docs/query/defoe_submit.yml")
+@jwt_required()
 def defoe_queries():
     user_id = get_jwt_identity()
 
-    defoe_q=dict_defoe_queries()
-    defoe_selection=request.json.get('defoe_selection')
+    defoe_selection = request.json.get('defoe_selection')
 
     # build defoe config from request
-    config={}
-    config["preprocess"]=request.json.get('preprocess')
-    config["target_sentences"]= request.json.get('target_sentences').split(",")
+    config = {}
+    config["preprocess"] = request.json.get('preprocess')
+    target_sentences = request.json.get('target_sentences')
+    config["target_sentences"] = target_sentences.split(",")
     config["target_filter"] = request.json.get('target_filter')
-    config["start_year"]= request.json.get('start_year', '1771')
-    config["end_year"]= request.json.get('end_year', '1771')
-    config["os_type"]="os"
+    config["start_year"] = request.json.get('start_year', '1771')
+    config["end_year"] = request.json.get('end_year', '1771')
+    config["os_type"] = "os"
     config["hit_count"] = request.json.get('hit_count')
     config["data"] = os.path.join(files.uploads_path, user_id, request.json.get('file'))
 
@@ -578,88 +583,109 @@ def defoe_queries():
     if config["window"] is None:
         config["window"] = 10
 
-    # if result not saved, run new query
-    if "normalized" not in defoe_selection:
-        job_id = user_id + "_" + defoe_selection + "_" + time.strftime("%Y%m%d-%H%M%S")
+    # TODO validate config data
 
-        job = get_defoe().submit_job(
-          job_id = job_id,
-          model_name = "sparql",
-          query_name = defoe_selection,
-          query_config = config,
-        )
-        return jsonify({
-          "success": True,
-          "id": job.id,
-        })
+    # Save config data to database
+    defoe_query_config = DefoeQueryConfig.create_new("eb", defoe_selection, config["preprocess"], config["data"],
+                                                     target_sentences, config["target_filter"],
+                                                     config["start_year"], config["end_year"], config["hit_count"],
+                                                     config["window"])
+    database.add_defoe_query_config(defoe_query_config)
+
+    # Save defoe query task information to database
+
+    defoe_query_task = DefoeQueryTask.create_new(user_id, defoe_query_config.id, "", "")
+
+    if defoe_selection in get_defoe().get_pre_computed_queries():
+        config["result_file_path"] = get_defoe().get_pre_computed_queries()[defoe_selection]
+    else:
+        config["result_file_path"] = os.path.join(files.results_path, user_id, str(defoe_query_task.id) + ".yml")
+
+    defoe_query_task.resultFile = config["result_file_path"]
+    print(defoe_query_task.resultFile)
+    database.add_defoe_query_task(defoe_query_task)
+
+    # Submit defoe query task
+    get_defoe().submit_job(
+        job_id=str(defoe_query_task.id),
+        model_name="sparql",
+        query_name=defoe_selection,
+        query_config=config,
+    )
+
+    return jsonify({
+        "success": True,
+        "id": defoe_query_task.id,
+    })
+
     # pre-computed query
-    results_file=os.path.join(files.results_path, defoe_selection+".yml")
-    results=read_results(results_file)
+    results_file = os.path.join(files.results_path, defoe_selection + ".yml")
+    results = read_results(results_file)
 
     #### creating config_defoe ####
-    config_defoe={}
+    config_defoe = {}
     if "terms" in defoe_selection or "uris" in defoe_selection:
-        config_defoe["preprocess"]= config["preprocess"]
-        config_defoe["target_sentences"]= config["target_sentences"]
+        config_defoe["preprocess"] = config["preprocess"]
+        config_defoe["target_sentences"] = config["target_sentences"]
         config_defoe["target_filter"] = config["target_filter"]
-        config_defoe["start_year"]= config["start_year"]
-        config_defoe["end_year"]= config["end_year"]
+        config_defoe["start_year"] = config["start_year"]
+        config_defoe["end_year"] = config["end_year"]
         if "snippet" in defoe_selection:
             config_defoe["window"] = config["window"]
     elif "frequency" in defoe_selection:
-        config_defoe["preprocess"]= config["preprocess"]
-        config_defoe["target_sentences"]= config["target_sentences"]
+        config_defoe["preprocess"] = config["preprocess"]
+        config_defoe["target_sentences"] = config["target_sentences"]
         config_defoe["target_filter"] = config["target_filter"]
-        config_defoe["start_year"]= config["start_year"]
-        config_defoe["end_year"]= config["end_year"]
+        config_defoe["start_year"] = config["start_year"]
+        config_defoe["end_year"] = config["end_year"]
         config_defoe["hit_count"] = config["hit_count"]
 
     if "terms" in defoe_selection:
-        results_uris=results["terms_uris"]
+        results_uris = results["terms_uris"]
         return jsonify({
-          "defoe_q": defoe_q,
-          "flag": 1,
-          "results": results,
-          "results_uris": results_uris,
-          "defoe_selection": defoe_selection,
-          "config": config_defoe,
-          "success": True,
+            "defoe_q": defoe_q,
+            "flag": 1,
+            "results": results,
+            "results_uris": results_uris,
+            "defoe_selection": defoe_selection,
+            "config": config_defoe,
+            "success": True,
         })
 
     elif "uris" in defoe_selection or "normalized" in defoe_selection:
         return jsonify({
-          "defoe_q": defoe_q,
-          "flag": 1,
-          "results": results,
-          "defoe_selection": defoe_selection,
-          "config": config_defoe,
-          "success": True,
-         })
+            "defoe_q": defoe_q,
+            "flag": 1,
+            "results": results,
+            "defoe_selection": defoe_selection,
+            "config": config_defoe,
+            "success": True,
+        })
 
-    preprocess= request.json.get('preprocess', None)
+    preprocess = request.json.get('preprocess', None)
     p_lexicon = preprocess_lexicon(config["data"], config["preprocess"])
 
     #### Read Normalized data
-    norm_file=os.path.join(files.results_path, "publication_normalized.yml")
+    norm_file = os.path.join(files.results_path, "publication_normalized.yml")
     ####
-    norm_publication=read_results(norm_file)
-    taxonomy=p_lexicon
-    line_f_plot, line_n_f_plot=plot_taxonomy_freq(taxonomy, results, norm_publication)
+    norm_publication = read_results(norm_file)
+    taxonomy = p_lexicon
+    line_f_plot, line_n_f_plot = plot_taxonomy_freq(taxonomy, results, norm_publication)
     return jsonify({
-      "defoe_q": defoe_q,
-      "flag": 1,
-      "results": results,
-      "defoe_selection": defoe_selection,
-      "line_f_plot": figure_to_dict(line_f_plot),
-      "line_n_f_plot": figure_to_dict(line_n_f_plot),
-      "config": config_defoe,
-      "success": True,
+        "defoe_q": defoe_q,
+        "flag": 1,
+        "results": results,
+        "defoe_selection": defoe_selection,
+        "line_f_plot": figure_to_dict(line_f_plot),
+        "line_n_f_plot": figure_to_dict(line_n_f_plot),
+        "config": config_defoe,
+        "success": True,
     })
 
 
 @query_protected.route("/upload", methods=["POST"])
-@jwt_required()
 @swag_from("../docs/query/upload.yml")
+@jwt_required()
 def upload():
     user_id = get_jwt_identity()
     user_folder = os.path.join(files.uploads_path, user_id)
@@ -671,8 +697,8 @@ def upload():
     file.save(os.path.join(user_folder, save_name))
 
     return jsonify({
-      "success": True,
-      "file": save_name,
+        "success": True,
+        "file": save_name,
     })
 
 
@@ -680,24 +706,77 @@ def upload():
 @swag_from("../docs/query/defoe_list.yml")
 def defoe_list():
     return jsonify({
-      "queries": list(dict_defoe_queries().keys()),
+        "queries": list(dict_defoe_queries().keys()),
     })
 
 
-@query.route("/defoe_status", methods=["POST"])
+@query_protected.route("/defoe_status", methods=["POST"])
 @swag_from("../docs/query/defoe_status.yml")
+@jwt_required()
 def defoe_status():
-    job_id = request.json.get("id")
+    task_id = request.json.get("id")
+    # Validate task_id
+    # If the task exits
+    # If the task is accessible to this user
     current_app.logger.info('defoe_status')
-    current_app.logger.info('job_id: %s', job_id)
-    job = get_defoe().get_status(job_id)
+    current_app.logger.info('task_id: %s', task_id)
+    job = get_defoe().get_status(task_id)
     with job._lock:
+        # Update the defoe query task when the status changes
+        if job.done:
+            task = database.get_defoe_query_task_by_taskID(task_id)
+            task.progress = 100
+            task.errorMsg = job.error
+            database.update_defoe_query_task(task)
+
         return jsonify({
-          "id": job_id,
-          "results": job.result,
-          "error": job.error,
-          "done": job.done,
+            "id": job.id,
+            "results": job.result,
+            "error": job.error,
+            "done": job.done,
         })
+
+
+@query_protected.route("/defoe_query_task", methods=['POST'])
+@jwt_required()
+def defoe_query_task():
+    task_id = request.json.get('task_id')
+    # Validate task_id
+    # If this task exists
+    task = database.get_defoe_query_task_by_taskID(task_id)
+    if task is None:
+        return jsonify({
+            "error": 'This Defoe Query Task does not exist!'
+        }), HTTPStatus.BAD_REQUEST
+    else:
+        config = database.get_defoe_query_config_by_id(task.configID)
+        if config is None:
+            raise Exception("No such defoe query config data for this query task!")
+        else:
+            print(config.to_dict())
+            return jsonify({
+                "submit_time": task.submitTime,
+                "config": config.to_dict()
+            }), HTTPStatus.OK
+
+
+@query_protected.route("/defoe_query_result", methods=['POST'])
+@jwt_required()
+def defoe_query_result():
+    result_filepath = request.json.get('result_filepath')
+    # Validate file path
+    # If the file exists
+    if result_filepath is not None and not os.path.isfile(result_filepath):
+        return jsonify({
+            "error": 'File does not exist!'
+        }), HTTPStatus.BAD_REQUEST
+    # TODO If the file is accessible to this user
+
+    # Convert result to object
+    results = read_results(result_filepath)
+    return jsonify({
+        "results": results
+    })
 
 
 @query.route("/download", methods=['GET'])
@@ -705,11 +784,10 @@ def download(defoe_selection=None):
     defoe_selection = request.args.get('defoe_selection', None)
     cwd = os.getcwd()
     os.chdir(files.results_path)
-    results_file=defoe_selection+".yml"
-    zip_file = defoe_selection+".zip"
+    results_file = defoe_selection + ".yml"
+    zip_file = defoe_selection + ".zip"
     with ZipFile(zip_file, 'w') as zipf:
         zipf.write(results_file)
     os.chdir(cwd)
-    zip_file=os.path.join(files.results_path, zip_file)
+    zip_file = os.path.join(files.results_path, zip_file)
     return send_file(zip_file, as_attachment=True)
-
