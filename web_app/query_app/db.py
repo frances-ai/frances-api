@@ -31,6 +31,12 @@ class DatabaseConfig:
         return config
 
 
+def record_to_defoe_query_task(record):
+    config_record = record[:11]
+    task_record = record[11:]
+    return DefoeQueryTask(*task_record[0:2], DefoeQueryConfig(*config_record), *task_record[3:])
+
+
 class Database:
     def __init__(self, config):
         self.db = psycopg2.connect(
@@ -82,7 +88,7 @@ class Database:
 
     def add_defoe_query_task(self, task):
         sql = "INSERT INTO DefoeQueryTasks (taskID, userID, configID, resultFile, progress, errorMsg) VALUES (%s, %s, %s, %s, %s, %s);"
-        vals = (task.id, task.userID, task.configID, task.resultFile, task.progress, task.errorMsg)
+        vals = (task.id, task.user_id, task.config.id, task.resultFile, task.progress, task.errorMsg)
 
         cursor = self.db.cursor()
         cursor.execute(sql, vals)
@@ -99,7 +105,10 @@ class Database:
         return
 
     def get_defoe_query_task_by_taskID(self, taskID):
-        sql = "SELECT * FROM DefoeQueryTasks WHERE taskID=%s;"
+        sql = "SELECT * " \
+              "FROM DefoeQueryConfigs " \
+              "INNER JOIN DefoeQueryTasks ON DefoeQueryTasks.configID = DefoeQueryConfigs.configID " \
+              "WHERE DefoeQueryTasks.taskID=%s;"
         cursor = self.db.cursor()
         cursor.execute(sql, (taskID,))
 
@@ -108,13 +117,31 @@ class Database:
             return None
 
         record = records[0]
-        return DefoeQueryTask(*record)
+        return record_to_defoe_query_task(record)
+
+    def get_all_defoe_query_tasks_by_userID(self, userID):
+        sql = "SELECT * " \
+              "FROM  DefoeQueryConfigs " \
+              "INNER JOIN DefoeQueryTasks ON DefoeQueryTasks.configID = DefoeQueryConfigs.configID " \
+              "WHERE DefoeQueryTasks.userID=%s;"
+        cursor = self.db.cursor()
+        cursor.execute(sql, (userID,))
+
+        records = cursor.fetchall()
+        if len(records) == 0:
+            return None
+        results = []
+        for record in records:
+            results.append(record_to_defoe_query_task(record))
+
+        return results
 
     def add_defoe_query_config(self, config):
         sql = "INSERT INTO  DefoeQueryConfigs(configID, collection, queryType, preprocess, lexiconFile, targetSentences, targetFilter, startYear, endYear, hitCount, snippetWindow)" \
               " VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s);"
-        vals = (config.id, config.collection, config.queryType, config.preprocess, config.lexiconFile, config.targetSentences,
-                config.targetFilter, config.startYear, config.endYear, config.hitCount, config.window)
+        vals = (
+        config.id, config.collection, config.queryType, config.preprocess, config.lexiconFile, config.targetSentences,
+        config.targetFilter, config.startYear, config.endYear, config.hitCount, config.window)
 
         cursor = self.db.cursor()
         cursor.execute(sql, vals)
@@ -149,7 +176,8 @@ class User:
 
 
 class DefoeQueryConfig:
-    def __init__(self, id, collection, queryType, preprocess, lexiconFile, targetSentences, targetFilter, startYear, endYear,
+    def __init__(self, id, collection, queryType, preprocess, lexiconFile, targetSentences, targetFilter, startYear,
+                 endYear,
                  hitCount, window):
         self.id = id
         self.collection = collection
@@ -164,11 +192,13 @@ class DefoeQueryConfig:
         self.window = window
 
     @staticmethod
-    def create_new(collection, queryType, preprocess, lexiconFile, targetSentences, targetFilter, startYear, endYear, hitCount,
+    def create_new(collection, queryType, preprocess, lexiconFile, targetSentences, targetFilter, startYear, endYear,
+                   hitCount,
                    window):
         id = uuid.uuid5(uuid.NAMESPACE_URL, namespace + lexiconFile + str(time.time()))
-        return DefoeQueryConfig(id, collection, queryType, preprocess, lexiconFile, targetSentences, targetFilter, startYear, endYear, hitCount,
-                    window)
+        return DefoeQueryConfig(id, collection, queryType, preprocess, lexiconFile, targetSentences, targetFilter,
+                                startYear, endYear, hitCount,
+                                window)
 
     def to_dict(self):
         return {
@@ -186,19 +216,29 @@ class DefoeQueryConfig:
 
 
 class DefoeQueryTask:
-    def __init__(self, id, userID, configID, resultFile, progress, errorMsg, submitTime):
+    def __init__(self, id, user_id, config, resultFile, progress, errorMsg, submitTime):
         self.id = id
-        self.userID = userID
-        self.configID = configID
+        self.user_id = user_id
+        self.config = config
         self.resultFile = resultFile
         self.progress = progress
         self.errorMsg = errorMsg
         self.submitTime = submitTime
 
     @staticmethod
-    def create_new(userID, configID, resultFile, errorMsg):
+    def create_new(user_id, config, resultFile, errorMsg):
         id = uuid.uuid5(uuid.NAMESPACE_URL, namespace + resultFile + str(time.time()))
-        return DefoeQueryTask(id, userID, configID, resultFile, 0, errorMsg, "")
+        return DefoeQueryTask(id, user_id, config, resultFile, 0, errorMsg, "")
+
+    def to_dict(self):
+        return {
+            "task_id": self.id,
+            "config": self.config.to_dict(),
+            "resultFile": self.resultFile,
+            "progress": self.progress,
+            "errorMsg": self.errorMsg,
+            "submit_time": self.submitTime.strftime("%Y-%m-%d %H:%M:%S.%f")
+        }
 
 
 if __name__ == "__main__":
@@ -224,7 +264,7 @@ if __name__ == "__main__":
     # Mock Defoe Query Task Submit
 
     # Save config
-    config = DefoeQueryConfig.create_new("eb", "public", "None",  "lexiconpath", "", "any", 1771, 1771, "word", 10);
+    config = DefoeQueryConfig.create_new("eb", "public", "None", "lexiconpath", "", "any", 1771, 1771, "word", 10);
     db.add_defoe_query_config(config)
 
     # Save Task

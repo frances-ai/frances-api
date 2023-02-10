@@ -578,6 +578,16 @@ def defoe_queries():
     config["hit_count"] = request.json.get('hit_count')
     config["data"] = os.path.join(files.uploads_path, user_id, request.json.get('file'))
 
+    collection = request.json.get('collection', 'Encyclopaedia Britannica (1768-1860)')
+
+    # TODO move this dict
+    kg_types = {
+        'Encyclopaedia Britannica (1768-1860)': 'total_eb',
+        'Chapbooks printed in Scotland': 'chapbooks_scotland'
+    }
+
+    config['kg_type'] = kg_types[collection]
+
     # set default window for snippet queries
     config["window"] = request.json.get('window')
     if config["window"] is None:
@@ -586,7 +596,7 @@ def defoe_queries():
     # TODO validate config data
 
     # Save config data to database
-    defoe_query_config = DefoeQueryConfig.create_new("eb", defoe_selection, config["preprocess"], config["data"],
+    defoe_query_config = DefoeQueryConfig.create_new(collection, defoe_selection, config["preprocess"], config["data"],
                                                      target_sentences, config["target_filter"],
                                                      config["start_year"], config["end_year"], config["hit_count"],
                                                      config["window"])
@@ -594,10 +604,10 @@ def defoe_queries():
 
     # Save defoe query task information to database
 
-    defoe_query_task = DefoeQueryTask.create_new(user_id, defoe_query_config.id, "", "")
+    defoe_query_task = DefoeQueryTask.create_new(user_id, defoe_query_config, "", "")
 
-    if defoe_selection in get_defoe().get_pre_computed_queries():
-        config["result_file_path"] = get_defoe().get_pre_computed_queries()[defoe_selection]
+    if (config['kg_type'] + '_' + defoe_selection) in get_defoe().get_pre_computed_queries():
+        config["result_file_path"] = get_defoe().get_pre_computed_queries()[(config['kg_type'] + '_' + defoe_selection)]
     else:
         config["result_file_path"] = os.path.join(files.results_path, user_id, str(defoe_query_task.id) + ".yml")
 
@@ -616,70 +626,6 @@ def defoe_queries():
     return jsonify({
         "success": True,
         "id": defoe_query_task.id,
-    })
-
-    # pre-computed query
-    results_file = os.path.join(files.results_path, defoe_selection + ".yml")
-    results = read_results(results_file)
-
-    #### creating config_defoe ####
-    config_defoe = {}
-    if "terms" in defoe_selection or "uris" in defoe_selection:
-        config_defoe["preprocess"] = config["preprocess"]
-        config_defoe["target_sentences"] = config["target_sentences"]
-        config_defoe["target_filter"] = config["target_filter"]
-        config_defoe["start_year"] = config["start_year"]
-        config_defoe["end_year"] = config["end_year"]
-        if "snippet" in defoe_selection:
-            config_defoe["window"] = config["window"]
-    elif "frequency" in defoe_selection:
-        config_defoe["preprocess"] = config["preprocess"]
-        config_defoe["target_sentences"] = config["target_sentences"]
-        config_defoe["target_filter"] = config["target_filter"]
-        config_defoe["start_year"] = config["start_year"]
-        config_defoe["end_year"] = config["end_year"]
-        config_defoe["hit_count"] = config["hit_count"]
-
-    if "terms" in defoe_selection:
-        results_uris = results["terms_uris"]
-        return jsonify({
-            "defoe_q": defoe_q,
-            "flag": 1,
-            "results": results,
-            "results_uris": results_uris,
-            "defoe_selection": defoe_selection,
-            "config": config_defoe,
-            "success": True,
-        })
-
-    elif "uris" in defoe_selection or "normalized" in defoe_selection:
-        return jsonify({
-            "defoe_q": defoe_q,
-            "flag": 1,
-            "results": results,
-            "defoe_selection": defoe_selection,
-            "config": config_defoe,
-            "success": True,
-        })
-
-    preprocess = request.json.get('preprocess', None)
-    p_lexicon = preprocess_lexicon(config["data"], config["preprocess"])
-
-    #### Read Normalized data
-    norm_file = os.path.join(files.results_path, "publication_normalized.yml")
-    ####
-    norm_publication = read_results(norm_file)
-    taxonomy = p_lexicon
-    line_f_plot, line_n_f_plot = plot_taxonomy_freq(taxonomy, results, norm_publication)
-    return jsonify({
-        "defoe_q": defoe_q,
-        "flag": 1,
-        "results": results,
-        "defoe_selection": defoe_selection,
-        "line_f_plot": figure_to_dict(line_f_plot),
-        "line_n_f_plot": figure_to_dict(line_n_f_plot),
-        "config": config_defoe,
-        "success": True,
     })
 
 
@@ -749,15 +695,9 @@ def defoe_query_task():
             "error": 'This Defoe Query Task does not exist!'
         }), HTTPStatus.BAD_REQUEST
     else:
-        config = database.get_defoe_query_config_by_id(task.configID)
-        if config is None:
-            raise Exception("No such defoe query config data for this query task!")
-        else:
-            print(config.to_dict())
-            return jsonify({
-                "submit_time": task.submitTime,
-                "config": config.to_dict()
-            }), HTTPStatus.OK
+        return jsonify({
+            "task": task.to_dict()
+        }), HTTPStatus.OK
 
 
 @query_protected.route("/defoe_query_result", methods=['POST'])
@@ -777,6 +717,20 @@ def defoe_query_result():
     return jsonify({
         "results": results
     })
+
+
+@query_protected.route("/defoe_query_tasks", methods=['POST'])
+@jwt_required()
+def defoe_query_tasks():
+    user_id = get_jwt_identity()
+    print('query')
+    # List all defoe query tasks this user submitted
+    tasks = database.get_all_defoe_query_tasks_by_userID(user_id)
+
+    return jsonify({
+        "tasks": list(map(lambda task: task.to_dict(), tasks))
+    })
+
 
 
 @query.route("/download", methods=['GET'])
