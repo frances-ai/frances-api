@@ -666,21 +666,50 @@ def defoe_status():
     # If the task is accessible to this user
     current_app.logger.info('defoe_status')
     current_app.logger.info('task_id: %s', task_id)
-    job = get_defoe().get_status(task_id)
-    with job._lock:
-        # Update the defoe query task when the status changes
-        if job.done:
-            task = database.get_defoe_query_task_by_taskID(task_id)
-            task.progress = 100
-            task.errorMsg = job.error
-            database.update_defoe_query_task(task)
 
-        return jsonify({
-            "id": job.id,
-            "results": job.result,
-            "error": job.error,
-            "done": job.done,
-        })
+    try:
+        # When query job is not done
+        job = get_defoe().get_status(task_id)
+
+        with job._lock:
+            # Update the defoe query task when the status changes
+            if job.done:
+                task = database.get_defoe_query_task_by_taskID(task_id)
+                task.progress = 100
+                task.errorMsg = job.error
+                database.update_defoe_query_task(task)
+
+            return jsonify({
+                "id": job.id,
+                "results": job.result,
+                "error": job.error,
+                "done": job.done,
+            })
+    except ValueError:
+        # When query job is not running in defoe,
+        # Check if query info is stored in database
+        try:
+            task = database.get_defoe_query_task_by_taskID(task_id)
+            print('get task from database')
+            if task.progress == 100:
+                return jsonify({
+                    "id": task.id,
+                    "results": task.resultFile,
+                    "error": task.errorMsg,
+                    "done": True,
+                })
+            else:
+                print('Task status lost!')
+                return jsonify({
+                    'error': 'Task status lost'
+                }, HTTPStatus.BAD_REQUEST)
+        except:
+            print('Task does not exist!')
+            return jsonify({
+                'error': 'Task does not exist!'
+            }, HTTPStatus.BAD_REQUEST)
+
+
 
 
 @query_protected.route("/defoe_query_task", methods=['POST'])
@@ -732,16 +761,9 @@ def defoe_query_tasks():
     })
 
 
+@query_protected.route("/download", methods=['POST'])
+@jwt_required()
+def download():
+    result_file_path = request.json.get('result_file_path', None)
 
-@query.route("/download", methods=['GET'])
-def download(defoe_selection=None):
-    defoe_selection = request.args.get('defoe_selection', None)
-    cwd = os.getcwd()
-    os.chdir(files.results_path)
-    results_file = defoe_selection + ".yml"
-    zip_file = defoe_selection + ".zip"
-    with ZipFile(zip_file, 'w') as zipf:
-        zipf.write(results_file)
-    os.chdir(cwd)
-    zip_file = os.path.join(files.results_path, zip_file)
-    return send_file(zip_file, as_attachment=True)
+    return send_file(result_file_path, as_attachment=True)
