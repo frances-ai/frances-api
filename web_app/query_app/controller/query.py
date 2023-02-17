@@ -558,6 +558,14 @@ def evolution_of_terms(termlink=None):
     }), HTTPStatus.OK
 
 
+def result_filename_to_absolute_filepath(result_filename, user_id):
+    if "precomputedResult" in result_filename:
+        print(files.defoe_path)
+        print(os.path.join(files.defoe_path, result_filename))
+        return os.path.join(files.defoe_path, result_filename)
+    return os.path.join(files.results_path, user_id, result_filename)
+
+
 @query_protected.route("/defoe_submit", methods=["POST"])
 @swag_from("../docs/query/defoe_submit.yml")
 @jwt_required()
@@ -576,7 +584,8 @@ def defoe_queries():
     config["end_year"] = request.json.get('end_year', '1771')
     config["os_type"] = "os"
     config["hit_count"] = request.json.get('hit_count')
-    config["data"] = os.path.join(files.uploads_path, user_id, request.json.get('file'))
+    lexicon_file = request.json.get('file', '')
+    config["data"] = os.path.join(files.uploads_path, user_id, lexicon_file)
 
     collection = request.json.get('collection', 'Encyclopaedia Britannica (1768-1860)')
 
@@ -596,7 +605,7 @@ def defoe_queries():
     # TODO validate config data
 
     # Save config data to database
-    defoe_query_config = DefoeQueryConfig.create_new(collection, defoe_selection, config["preprocess"], config["data"],
+    defoe_query_config = DefoeQueryConfig.create_new(collection, defoe_selection, config["preprocess"], lexicon_file,
                                                      target_sentences, config["target_filter"],
                                                      config["start_year"], config["end_year"], config["hit_count"],
                                                      config["window"])
@@ -604,20 +613,20 @@ def defoe_queries():
 
     # Save defoe query task information to database
 
-    defoe_query_task = DefoeQueryTask.create_new(user_id, defoe_query_config, "", "")
-
+    query_task = DefoeQueryTask.create_new(user_id, defoe_query_config, "", "")
+    result_filename = str(query_task.id) + ".yml"
     if (config['kg_type'] + '_' + defoe_selection) in get_defoe().get_pre_computed_queries():
-        config["result_file_path"] = get_defoe().get_pre_computed_queries()[(config['kg_type'] + '_' + defoe_selection)]
-    else:
-        config["result_file_path"] = os.path.join(files.results_path, user_id, str(defoe_query_task.id) + ".yml")
+        result_filename = get_defoe().get_pre_computed_queries()[config['kg_type'] + '_' + defoe_selection]
+        config["result_file_path"] = result_filename_to_absolute_filepath(result_filename, user_id)
+    config["result_file_path"] = os.path.join(files.results_path, user_id, result_filename)
 
-    defoe_query_task.resultFile = config["result_file_path"]
-    print(defoe_query_task.resultFile)
-    database.add_defoe_query_task(defoe_query_task)
+    query_task.resultFile = result_filename
+    print(query_task.resultFile)
+    database.add_defoe_query_task(query_task)
 
     # Submit defoe query task
     get_defoe().submit_job(
-        job_id=str(defoe_query_task.id),
+        job_id=str(query_task.id),
         model_name="sparql",
         query_name=defoe_selection,
         query_config=config,
@@ -625,7 +634,7 @@ def defoe_queries():
 
     return jsonify({
         "success": True,
-        "id": defoe_query_task.id,
+        "id": query_task.id,
     })
 
 
@@ -670,7 +679,6 @@ def defoe_status():
     try:
         # When query job is not done
         job = get_defoe().get_status(task_id)
-
         with job._lock:
             # Update the defoe query task when the status changes
             if job.done:
@@ -710,8 +718,6 @@ def defoe_status():
             }, HTTPStatus.BAD_REQUEST)
 
 
-
-
 @query_protected.route("/defoe_query_task", methods=['POST'])
 @jwt_required()
 def defoe_query_task():
@@ -732,10 +738,14 @@ def defoe_query_task():
 @query_protected.route("/defoe_query_result", methods=['POST'])
 @jwt_required()
 def defoe_query_result():
-    result_filepath = request.json.get('result_filepath')
+    user_id = get_jwt_identity()
+    result_filename = request.json.get('result_filename')
+    result_filepath = result_filename_to_absolute_filepath(result_filename, user_id)
+    print(result_filepath)
     # Validate file path
     # If the file exists
     if result_filepath is not None and not os.path.isfile(result_filepath):
+        print("file does not exist!")
         return jsonify({
             "error": 'File does not exist!'
         }), HTTPStatus.BAD_REQUEST
@@ -764,6 +774,8 @@ def defoe_query_tasks():
 @query_protected.route("/download", methods=['POST'])
 @jwt_required()
 def download():
-    result_file_path = request.json.get('result_file_path', None)
+    user_id = get_jwt_identity()
+    result_filename = request.json.get('result_filename', None)
+    result_file_path = result_filename_to_absolute_filepath(result_filename, user_id)
 
     return send_file(result_file_path, as_attachment=True)

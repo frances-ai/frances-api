@@ -3,6 +3,7 @@ class FilesConfig:
     uploads_path = ""
     results_path = ""
     models_path = ""
+    defoe_path = ""
   
   @staticmethod
   def from_dict(vals):
@@ -10,4 +11,5 @@ class FilesConfig:
     config.uploads_path = vals["uploads"]
     config.results_path = vals["results"]
     config.models_path = vals["models"]
+    config.defoe_path = vals["defoe"]
     return config
