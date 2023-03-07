@@ -580,12 +580,18 @@ def defoe_queries():
     target_sentences = request.json.get('target_sentences')
     config["target_sentences"] = target_sentences.split(",")
     config["target_filter"] = request.json.get('target_filter')
-    config["start_year"] = request.json.get('start_year', '1771')
-    config["end_year"] = request.json.get('end_year', '1771')
+    start_year = request.json.get('start_year')
+    end_year = request.json.get('end_year')
     config["os_type"] = "os"
     config["hit_count"] = request.json.get('hit_count')
     lexicon_file = request.json.get('file', '')
     config["data"] = os.path.join(files.uploads_path, user_id, lexicon_file)
+
+    if start_year is not None:
+        config['start_year'] = str(start_year)
+
+    if end_year is not None:
+        config['end_year'] = str(end_year)
 
     collection = request.json.get('collection', 'Encyclopaedia Britannica (1768-1860)')
 
@@ -597,18 +603,17 @@ def defoe_queries():
 
     config['kg_type'] = kg_types[collection]
 
-    # set default window for snippet queries
-    config["window"] = request.json.get('window')
-    if config["window"] is None:
-        config["window"] = 10
+    window = request.json.get('window')
+
+    config['window'] = str(window)
 
     # TODO validate config data
 
     # Save config data to database
     defoe_query_config = DefoeQueryConfig.create_new(collection, defoe_selection, config["preprocess"], lexicon_file,
                                                      target_sentences, config["target_filter"],
-                                                     config["start_year"], config["end_year"], config["hit_count"],
-                                                     config["window"])
+                                                     start_year, end_year, config["hit_count"],
+                                                     window)
     database.add_defoe_query_config(defoe_query_config)
 
     # Save defoe query task information to database
@@ -777,5 +782,10 @@ def download():
     user_id = get_jwt_identity()
     result_filename = request.json.get('result_filename', None)
     result_file_path = result_filename_to_absolute_filepath(result_filename, user_id)
+    print(result_file_path)
+    zip_file_path = result_file_path[:-3] + "zip"
+    print(zip_file_path)
+    with ZipFile(zip_file_path, 'w', ZIP_DEFLATED) as zipf:
+        zipf.write(result_file_path, arcname=os.path.basename(result_file_path))
 
-    return send_file(result_file_path, as_attachment=True)
+    return send_file(zip_file_path, as_attachment=True)
