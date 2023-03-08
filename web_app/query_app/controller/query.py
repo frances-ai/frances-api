@@ -691,6 +691,7 @@ def defoe_status():
                 task.progress = 100
                 task.errorMsg = job.error
                 database.update_defoe_query_task(task)
+                current_app.logger.info('It takes %.5f seconds to finish this job!', job.duration)
 
             return jsonify({
                 "id": job.id,
