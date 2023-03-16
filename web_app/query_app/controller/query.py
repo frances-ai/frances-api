@@ -582,7 +582,6 @@ def defoe_queries():
     config["target_filter"] = request.json.get('target_filter')
     start_year = request.json.get('start_year')
     end_year = request.json.get('end_year')
-    config["os_type"] = "os"
     config["hit_count"] = request.json.get('hit_count')
     lexicon_file = request.json.get('file', '')
     config["data"] = os.path.join(files.uploads_path, user_id, lexicon_file)
@@ -691,7 +690,8 @@ def defoe_status():
                 task.progress = 100
                 task.errorMsg = job.error
                 database.update_defoe_query_task(task)
-                current_app.logger.info('It takes %.5f seconds to finish this job!', job.duration)
+                if hasattr(job, 'duration'):
+                    current_app.logger.info('It takes %.5f seconds to finish this job!', job.duration)
 
             return jsonify({
                 "id": job.id,
