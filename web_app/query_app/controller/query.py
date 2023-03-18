@@ -15,7 +15,7 @@ from operator import itemgetter
 
 from werkzeug.utils import secure_filename
 
-from ..resolver import get_models, get_defoe, get_files, get_database
+from ..resolver import get_models, get_defoe, get_files, get_database, get_kg_type
 from flasgger import swag_from
 
 from ..db import DefoeQueryConfig, DefoeQueryTask
@@ -145,30 +145,18 @@ def vol_details():
     return jsonify(OutputArray)
 
 
-@query.route("/visualization_resources", methods=['GET', 'POST'])
+@query.route("/visualization_resources", methods=['POST'])
 @swag_from("../docs/query/visualization_resources.yml")
-def visualization_resources(termlink=None, termtype=None):
-    if request.method == "POST":
-        if 'resource_uri' in request.json:
-            uri_raw = request.json.get('resource_uri').strip().replace("<", "").replace(">", "")
-            if uri_raw == "":
-                uri = "<https://w3id.org/eb/i/Article/992277653804341_144133901_AABAM_0>"
-            else:
-                uri = "<" + uri_raw + ">"
-            g_results = describe_resource(uri)
-            return jsonify({
-                "results": g_results,
-                "uri": uri,
-            }), HTTPStatus.OK
-
-    # handle GET request
-    termlink = request.args.get('termlink', None)
-    termtype = request.args.get('termtype', None)
-    if termlink != None:
-        if ">" in termlink:
-            termlink = termlink.split(">")[0]
-        uri = "<https://w3id.org/eb/i/" + termtype + "/" + termlink + ">"
-        g_results = describe_resource(uri)
+def visualization_resources():
+    if 'resource_uri' in request.json and 'collection' in request.json:
+        uri_raw = request.json.get('resource_uri').strip().replace("<", "").replace(">", "")
+        collection = request.json.get('collection')
+        kg_type = get_kg_type(collection)
+        if uri_raw == "":
+            uri = "<https://w3id.org/eb/i/Article/992277653804341_144133901_AABAM_0>"
+        else:
+            uri = "<" + uri_raw + ">"
+        g_results = describe_resource(uri, kg_type)
         return jsonify({
             "results": g_results,
             "uri": uri,
@@ -594,13 +582,7 @@ def defoe_queries():
 
     collection = request.json.get('collection', 'Encyclopaedia Britannica (1768-1860)')
 
-    # TODO move this dict
-    kg_types = {
-        'Encyclopaedia Britannica (1768-1860)': 'total_eb',
-        'Chapbooks printed in Scotland': 'chapbooks_scotland'
-    }
-
-    config['kg_type'] = kg_types[collection]
+    config['kg_type'] = get_kg_type[collection]
 
     window = request.json.get('window')
 
