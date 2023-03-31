@@ -99,52 +99,6 @@ def term_search(termlink=None):
     }), HTTPStatus.OK
 
 
-@query.route("/eb_details", methods=['POST'])
-@swag_from("../docs/query/eb_details.yml")
-def eb_details():
-    edList = get_editions()
-    if 'edition_selection' in request.json and 'volume_selection' in request.json:
-        ed_raw = request.json.get('edition_selection')
-        vol_raw = request.json.get('volume_selection')
-        if vol_raw != "" and ed_raw != "":
-            ed_uri = "<" + ed_raw + ">"
-            ed_r = get_editions_details(ed_uri)
-            vol_uri = "<" + vol_raw + ">"
-            ed_v = get_volume_details(vol_uri)
-            ed_st = get_vol_statistics(vol_uri)
-            ed_name = edList[ed_raw]
-            vol_name = get_vol_by_vol_uri(vol_uri)
-            return jsonify({
-                "editionList": edList,
-                "edition": {
-                    "name": ed_name,
-                    "details": ed_r,
-                },
-                "volume": {
-                    "name": vol_name,
-                    "details": ed_v,
-                    "statistics": ed_st,
-                },
-            }), HTTPStatus.OK
-
-    return jsonify({
-        "editionList": edList,
-    }), HTTPStatus.OK
-
-
-@query.route("/vol_details", methods=['POST'])
-@swag_from("../docs/query/vol_details.yml")
-def vol_details():
-    uri_raw = request.json.get('edition_selection')
-    uri = "<" + uri_raw + ">"
-    volList = get_volumes(uri)
-    OutputArray = []
-    for key, value in sorted(volList.items(), key=lambda item: item[1]):
-        outputObj = {'id': key, 'name': value}
-        OutputArray.append(outputObj)
-    return jsonify(OutputArray)
-
-
 @query.route("/visualization_resources", methods=['POST'])
 @swag_from("../docs/query/visualization_resources.yml")
 def visualization_resources():
@@ -582,7 +536,7 @@ def defoe_queries():
 
     collection = request.json.get('collection', 'Encyclopaedia Britannica (1768-1860)')
 
-    config['kg_type'] = get_kg_type[collection]
+    config['kg_type'] = get_kg_type(collection)
 
     window = request.json.get('window')
 

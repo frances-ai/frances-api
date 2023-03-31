@@ -48,6 +48,10 @@ class FrancesConfig:
     def __init__(self, kg_urls=None, files=None):
         self.kg_urls = kg_urls
         self.files = files
+        self.collections = [
+            'Encyclopaedia Britannica (1768-1860)',
+            'Chapbooks printed in Scotland',
+            'Ladies’ Edinburgh Debating Society']
 
     @staticmethod
     def from_dict(vals):
@@ -127,6 +131,7 @@ kg_types_map = {
 
 
 def get_kg_type(collection):
+    print(kg_types_map[collection])
     return kg_types_map[collection]
 
 

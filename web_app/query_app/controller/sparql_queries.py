@@ -2,7 +2,15 @@ from SPARQLWrapper import SPARQLWrapper, RDF, JSON
 import requests
 import traceback
 
-from ..resolver import get_kg_url
+
+def get_kg_url(kg):
+    kgs = {
+        'total_eb': "http://localhost:3030/total_eb/sparql",
+        'chapbooks_scotland': "http://localhost:3030/chapbooks_scotland/sparql"
+    }
+
+    return kgs[kg]
+
 
 eb_url = get_kg_url('total_eb')
 
@@ -129,23 +137,68 @@ def get_volumes(uri):
 
 def get_editions():
     sparql = SPARQLWrapper(eb_url)
-    query1 = """
+    # Title: Edition 1,1771
+    query = """
     PREFIX eb: <https://w3id.org/eb#>
-    SELECT ?enum ?e ?y WHERE {
+    SELECT ?title ?e ?y WHERE {
            ?e a eb:Edition ;
-                eb:number ?enum ;
+                eb:title ?title;
                 eb:publicationYear ?y.
-               
-        }"""
-    query = query1
-    sparqlW.setQuery(query)
-    sparqlW.setReturnFormat(JSON)
-    results = sparqlW.query().convert()
-    clean_r = {}
+        } ORDER BY ASC(?y)"""
+    sparql.setQuery(query)
+    sparql.setReturnFormat(JSON)
+    results = sparql.query().convert()
+    clean_r = []
     for r in results["results"]["bindings"]:
-        clean_r[r["e"]["value"]] = "Edition " + r["enum"]["value"] + " Year " + r["y"]["value"]
-    clean_r['https://w3id.org/eb/i/Edition/9910796343804340'] = 'Sup. Edition 3 1801'
+        clean_r.append({
+            "uri": r["e"]["value"],
+            "edition_name": r["title"]["value"]
+        })
+    clean_r.append({
+        "uri": 'https://w3id.org/eb/i/Edition/9910796343804340',
+        "edition_name": 'Sup. Edition 3, 1801'
+    })
     return clean_r
+
+
+def get_clean_serie_title(title):
+    max_length = 100
+    title_removed_collection_name = title
+    split_str = title.split("_")
+    if len(split_str) == 2:
+        title_removed_collection_name = split_str[1]
+
+    title_within_max_length = title_removed_collection_name
+    if len(title_removed_collection_name) > max_length:
+        title_within_max_length = title_removed_collection_name[:max_length] + "..."
+    return title_within_max_length
+
+
+def get_series(kg_type):
+    kg_url = get_kg_url(kg_type)
+    sparql = SPARQLWrapper(kg_url)
+    query = """
+    PREFIX nls: <https://w3id.org/nls#>
+    SELECT ?title ?e ?y WHERE {
+           ?e a nls:Serie ;
+                nls:title ?title ;
+                nls:publicationYear ?y.
+
+        } ORDER BY ASC(?y)"""
+    sparql.setQuery(query)
+    sparql.setReturnFormat(JSON)
+    results = sparql.query().convert()
+    clean_r = []
+    for r in results["results"]["bindings"]:
+        clean_r.append({
+            "uri": r["e"]["value"],
+            "serie_name": get_clean_serie_title(r["title"]["value"])
+        })
+    return clean_r
+
+
+if __name__ == '__main__':
+    print(get_volumes("<https://w3id.org/eb/i/Edition/992277653804341>"))
 
 
 def get_numberOfVolumes(uri):
