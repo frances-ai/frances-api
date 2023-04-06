@@ -15,7 +15,7 @@ from operator import itemgetter
 
 from werkzeug.utils import secure_filename
 
-from ..resolver import get_models, get_defoe, get_files, get_database
+from ..resolver import get_models, get_defoe, get_files, get_database, get_kg_type
 from flasgger import swag_from
 
 from ..db import DefoeQueryConfig, DefoeQueryTask
@@ -99,76 +99,18 @@ def term_search(termlink=None):
     }), HTTPStatus.OK
 
 
-@query.route("/eb_details", methods=['POST'])
-@swag_from("../docs/query/eb_details.yml")
-def eb_details():
-    edList = get_editions()
-    if 'edition_selection' in request.json and 'volume_selection' in request.json:
-        ed_raw = request.json.get('edition_selection')
-        vol_raw = request.json.get('volume_selection')
-        if vol_raw != "" and ed_raw != "":
-            ed_uri = "<" + ed_raw + ">"
-            ed_r = get_editions_details(ed_uri)
-            vol_uri = "<" + vol_raw + ">"
-            ed_v = get_volume_details(vol_uri)
-            ed_st = get_vol_statistics(vol_uri)
-            ed_name = edList[ed_raw]
-            vol_name = get_vol_by_vol_uri(vol_uri)
-            return jsonify({
-                "editionList": edList,
-                "edition": {
-                    "name": ed_name,
-                    "details": ed_r,
-                },
-                "volume": {
-                    "name": vol_name,
-                    "details": ed_v,
-                    "statistics": ed_st,
-                },
-            }), HTTPStatus.OK
-
-    return jsonify({
-        "editionList": edList,
-    }), HTTPStatus.OK
-
-
-@query.route("/vol_details", methods=['POST'])
-@swag_from("../docs/query/vol_details.yml")
-def vol_details():
-    uri_raw = request.json.get('edition_selection')
-    uri = "<" + uri_raw + ">"
-    volList = get_volumes(uri)
-    OutputArray = []
-    for key, value in sorted(volList.items(), key=lambda item: item[1]):
-        outputObj = {'id': key, 'name': value}
-        OutputArray.append(outputObj)
-    return jsonify(OutputArray)
-
-
-@query.route("/visualization_resources", methods=['GET', 'POST'])
+@query.route("/visualization_resources", methods=['POST'])
 @swag_from("../docs/query/visualization_resources.yml")
-def visualization_resources(termlink=None, termtype=None):
-    if request.method == "POST":
-        if 'resource_uri' in request.json:
-            uri_raw = request.json.get('resource_uri').strip().replace("<", "").replace(">", "")
-            if uri_raw == "":
-                uri = "<https://w3id.org/eb/i/Article/992277653804341_144133901_AABAM_0>"
-            else:
-                uri = "<" + uri_raw + ">"
-            g_results = describe_resource(uri)
-            return jsonify({
-                "results": g_results,
-                "uri": uri,
-            }), HTTPStatus.OK
-
-    # handle GET request
-    termlink = request.args.get('termlink', None)
-    termtype = request.args.get('termtype', None)
-    if termlink != None:
-        if ">" in termlink:
-            termlink = termlink.split(">")[0]
-        uri = "<https://w3id.org/eb/i/" + termtype + "/" + termlink + ">"
-        g_results = describe_resource(uri)
+def visualization_resources():
+    if 'resource_uri' in request.json and 'collection' in request.json:
+        uri_raw = request.json.get('resource_uri').strip().replace("<", "").replace(">", "")
+        collection = request.json.get('collection')
+        kg_type = get_kg_type(collection)
+        if uri_raw == "":
+            uri = "<https://w3id.org/eb/i/Article/992277653804341_144133901_AABAM_0>"
+        else:
+            uri = "<" + uri_raw + ">"
+        g_results = describe_resource(uri, kg_type)
         return jsonify({
             "results": g_results,
             "uri": uri,
@@ -582,7 +524,6 @@ def defoe_queries():
     config["target_filter"] = request.json.get('target_filter')
     start_year = request.json.get('start_year')
     end_year = request.json.get('end_year')
-    config["os_type"] = "os"
     config["hit_count"] = request.json.get('hit_count')
     lexicon_file = request.json.get('file', '')
     config["data"] = os.path.join(files.uploads_path, user_id, lexicon_file)
@@ -595,13 +536,7 @@ def defoe_queries():
 
     collection = request.json.get('collection', 'Encyclopaedia Britannica (1768-1860)')
 
-    # TODO move this dict
-    kg_types = {
-        'Encyclopaedia Britannica (1768-1860)': 'total_eb',
-        'Chapbooks printed in Scotland': 'chapbooks_scotland'
-    }
-
-    config['kg_type'] = kg_types[collection]
+    config['kg_type'] = get_kg_type(collection)
 
     window = request.json.get('window')
 
@@ -691,6 +626,8 @@ def defoe_status():
                 task.progress = 100
                 task.errorMsg = job.error
                 database.update_defoe_query_task(task)
+                if hasattr(job, 'duration'):
+                    current_app.logger.info('It takes %.5f seconds to finish this job!', job.duration)
 
             return jsonify({
                 "id": job.id,

@@ -91,6 +91,7 @@ def dict_defoe_queries():
     defoe_q["uris_keysearch"]="uris_keysearch"
     defoe_q["terms_snippet_keysearch_by_year"]="terms_snippet_keysearch_by_year"
     defoe_q["terms_fulltext_keysearch_by_year"]="terms_fulltext_keysearch_by_year"
+    defoe_q["geoparser_by_year"] = "geoparser_by_year"
     return defoe_q
 
 
