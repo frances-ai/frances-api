@@ -1,11 +1,12 @@
 import json
 import os.path
 from http import HTTPStatus
-from os.path import dirname, abspath
+from os.path import dirname, abspath, join
 
 from flask import Blueprint, jsonify, request, send_file
 
 from .sparql_queries import *
+from ..resolver import get_kg_type, get_files
 
 collection = Blueprint("collection", __name__, url_prefix="/api/v1/collection")
 
@@ -19,7 +20,6 @@ def get_collections_list():
         "image_name": c["cover_image_name_small"],
         "year_range": c["year_range"]
     }, collections_detail))
-    print(collections)
     return jsonify({
         "collections": collections
     }), HTTPStatus.OK
@@ -27,14 +27,14 @@ def get_collections_list():
 
 def get_collections_json():
     current_dir = dirname(abspath(__file__))
-    collections_json_file = open(os.path.join(current_dir, "collections.json"))
+    collections_json_file = open(join(current_dir, "collections.json"))
     return json.load(collections_json_file)
 
 
 @collection.get("/image")
 def get_collection_image():
     image_name = request.args.get("name")
-    image_file_path = "/Users/ly40/Documents/frances-ai/frances-api/web_app/images/collections/" + image_name
+    image_file_path = os.path.join(get_files().images_path, "collections", image_name)
     return send_file(image_file_path, mimetype="image/jpeg")
 
 
@@ -46,56 +46,59 @@ def get_collection_by_id(collection_id):
 
 @collection.get("/")
 def get_collection_detail():
-    collection_id = request.args.get("id")
-    return get_collection_by_id(collection_id)
+    collection_id = request.args.get("id", type=int)
+    return jsonify(get_collection_by_id(collection_id)), HTTPStatus.OK
 
 
-@collection.route("/eb_details", methods=['POST'])
-def eb_details():
-    edList = get_editions()
-    if 'edition_selection' in request.json and 'volume_selection' in request.json:
-        ed_raw = request.json.get('edition_selection')
-        vol_raw = request.json.get('volume_selection')
-        if vol_raw != "" and ed_raw != "":
-            ed_uri = "<" + ed_raw + ">"
-            ed_r = get_editions_details(ed_uri)
-            vol_uri = "<" + vol_raw + ">"
-            ed_v = get_volume_details(vol_uri)
-            ed_st = get_vol_statistics(vol_uri)
-            ed_name = edList[ed_raw]
-            vol_name = get_vol_by_vol_uri(vol_uri)
-            return jsonify({
-                "editionList": edList,
-                "edition": {
-                    "name": ed_name,
-                    "details": ed_r,
-                },
-                "volume": {
-                    "name": vol_name,
-                    "details": ed_v,
-                    "statistics": ed_st,
-                },
-            }), HTTPStatus.OK
-
-    return jsonify({
-        "editionList": edList,
-    }), HTTPStatus.OK
-
-
-@collection.route("/eb_editions", methods=['POST'])
+@collection.route("/eb_edition/list", methods=['GET'])
 def eb_edition_list():
+    return jsonify(get_editions()), HTTPStatus.OK
+
+
+@collection.route("/nls_serie/list", methods=['GET'])
+def nls_serie_list():
+    collection_name = request.args.get("collection")
+    kg_type = get_kg_type(collection_name)
+    return jsonify(get_series(kg_type)), HTTPStatus.OK
+
+
+@collection.route("/eb_edition", methods=['GET'])
+def eb_edition():
+    edition_uri = request.args.get("uri")
+    edition_uri = "<" + edition_uri + ">"
+    return jsonify(get_edition_details(edition_uri)), HTTPStatus.OK
+
+
+@collection.route("/nls_serie", methods=['GET'])
+def nls_serie():
+    collection_name = request.args.get("collection")
+    kg_type = get_kg_type(collection_name)
+    serie_uri = request.args.get("uri")
+    serie_uri = "<" + serie_uri + ">"
+    return jsonify(get_serie_details(kg_type, serie_uri)), HTTPStatus.OK
+
+
+@collection.get("volume/list")
+def volume_list():
+    collection_name = request.args.get("collection")
+    kg_type = get_kg_type(collection_name)
+    edition_uri = request.args.get("uri")
+    edition_uri = "<" + edition_uri + ">"
+    return jsonify(get_volumes(kg_type, edition_uri)), HTTPStatus.OK
+
+
+@collection.get("/volume")
+def volume():
+    collection_name = request.args.get("collection")
+    kg_type = get_kg_type(collection_name)
+    volume_uri = request.args.get("uri")
+    volume_uri = "<" + volume_uri + ">"
+    if kg_type == "total_eb":
+        return jsonify({
+            "detail": get_volume_details(kg_type, volume_uri),
+            "statistics": get_eb_vol_statistics(volume_uri)
+        }), HTTPStatus.OK
+
     return jsonify({
-        "editionList": get_editions()
+        "detail": get_volume_details(kg_type, volume_uri)
     }), HTTPStatus.OK
-
-
-@collection.route("/vol_details", methods=['POST'])
-def vol_details():
-    uri_raw = request.json.get('edition_selection')
-    uri = "<" + uri_raw + ">"
-    volList = get_volumes(uri)
-    OutputArray = []
-    for key, value in sorted(volList.items(), key=lambda item: item[1]):
-        outputObj = {'id': key, 'name': value}
-        OutputArray.append(outputObj)
-    return jsonify(OutputArray)

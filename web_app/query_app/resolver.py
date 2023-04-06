@@ -2,7 +2,6 @@ import os
 import json
 import requests
 
-from .controller.kg_urls import KGUrlsConfig
 from .db import Database, DatabaseConfig
 
 from defoe_lib.config import DefoeConfig
@@ -48,15 +47,11 @@ class FrancesConfig:
     def __init__(self, kg_urls=None, files=None):
         self.kg_urls = kg_urls
         self.files = files
-        self.collections = [
-            'Encyclopaedia Britannica (1768-1860)',
-            'Chapbooks printed in Scotland',
-            'Ladies’ Edinburgh Debating Society']
 
     @staticmethod
     def from_dict(vals):
         config = FrancesConfig()
-        config.kg_urls = KGUrlsConfig.from_dict(vals["kgUrls"])
+        config.kg_urls = vals["kgUrls"]
         config.files = FilesConfig.from_dict(vals["files"])
         return config
 
@@ -125,24 +120,19 @@ def get_kg_urls():
 
 
 kg_types_map = {
-    'Encyclopaedia Britannica (1768-1860)': 'total_eb',
-    'Chapbooks printed in Scotland': 'chapbooks_scotland'
+    'Encyclopaedia Britannica': 'total_eb',
+    'Chapbooks printed in Scotland': 'chapbooks_scotland',
+    'Ladies’ Edinburgh Debating Society': 'ladies',
+    'Gazetteers of Scotland': 'gazetteers_scotland'
 }
 
 
 def get_kg_type(collection):
-    print(kg_types_map[collection])
     return kg_types_map[collection]
 
 
-kg_urls_map = {
-    'total_eb': get_kg_urls().eb,
-    'chapbooks_scotland': get_kg_urls().chapbooks
-}
-
-
 def get_kg_url(kg_type):
-    return kg_urls_map[kg_type]
+    return get_kg_urls()[kg_type]
 
 
 def get_defoe():

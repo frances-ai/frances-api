@@ -43,6 +43,10 @@ class DefaultFlaskConfig:
 
     RESULTS_FOLDER = str(BASE_DIR) + "/query_app/defoe_results"
 
+    IMAGES_FOLDER = str(BASE_DIR) + "/images"
+
+    MODELS_FOLDER = str(BASE_DIR) + "/models"
+
     ALLOWED_EXTENSIONS = {'txt', 'yaml', 'yml'}
 
     # OpenAPI
