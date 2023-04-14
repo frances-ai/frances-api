@@ -1,7 +1,12 @@
+import io
+
 from flask import Blueprint, send_file, request, jsonify, session, current_app
 from flask_jwt_extended import jwt_required, get_jwt_identity
 from flask_paginate import Pagination
 from http import HTTPStatus
+
+from google.cloud.dataproc_v1 import JobStatus
+
 from .sparql_queries import *
 from itertools import islice
 
@@ -15,7 +20,8 @@ from operator import itemgetter
 
 from werkzeug.utils import secure_filename
 
-from ..resolver import get_models, get_defoe, get_files, get_database, get_kg_type
+from ..defoe_service import DefoeService
+from ..resolver import get_models, get_files, get_database, get_kg_type, get_defoe_service, get_google_cloud_storage
 from flasgger import swag_from
 
 from ..db import DefoeQueryConfig, DefoeQueryTask
@@ -500,14 +506,6 @@ def evolution_of_terms(termlink=None):
     }), HTTPStatus.OK
 
 
-def result_filename_to_absolute_filepath(result_filename, user_id):
-    if "precomputedResult" in result_filename:
-        print(files.defoe_path)
-        print(os.path.join(files.defoe_path, result_filename))
-        return os.path.join(files.defoe_path, result_filename)
-    return os.path.join(files.results_path, user_id, result_filename)
-
-
 @query_protected.route("/defoe_submit", methods=["POST"])
 @swag_from("../docs/query/defoe_submit.yml")
 @jwt_required()
@@ -520,7 +518,7 @@ def defoe_queries():
     config = {}
     config["preprocess"] = request.json.get('preprocess')
     target_sentences = request.json.get('target_sentences')
-    config["target_sentences"] = target_sentences.split(",")
+    config["target_sentences"] = target_sentences
     config["target_filter"] = request.json.get('target_filter')
     start_year = request.json.get('start_year')
     end_year = request.json.get('end_year')
@@ -554,28 +552,34 @@ def defoe_queries():
     # Save defoe query task information to database
 
     query_task = DefoeQueryTask.create_new(user_id, defoe_query_config, "", "")
-    result_filename = str(query_task.id) + ".yml"
-    if (config['kg_type'] + '_' + defoe_selection) in get_defoe().get_pre_computed_queries():
-        result_filename = get_defoe().get_pre_computed_queries()[config['kg_type'] + '_' + defoe_selection]
-        config["result_file_path"] = result_filename_to_absolute_filepath(result_filename, user_id)
-    config["result_file_path"] = os.path.join(files.results_path, user_id, result_filename)
+    result_file_path = os.path.join(files.results_path, user_id, str(query_task.id) + ".yml")
 
-    query_task.resultFile = result_filename
+    if (config['kg_type'] + '_' + defoe_selection) in DefoeService.get_pre_computed_queries():
+        result_file_path = DefoeService.get_pre_computed_queries()[config['kg_type'] + '_' + defoe_selection]
+
+    query_task.resultFile = result_file_path
     print(query_task.resultFile)
-    database.add_defoe_query_task(query_task)
 
-    # Submit defoe query task
-    get_defoe().submit_job(
-        job_id=str(query_task.id),
-        model_name="sparql",
-        query_name=defoe_selection,
-        query_config=config,
-    )
+    try:
+        # Submit defoe query task
+        get_defoe_service().submit_job(
+            job_id=str(query_task.id),
+            model_name="sparql",
+            query_name=defoe_selection,
+            endpoint=get_kg_url(config["kg_type"]),
+            query_config=config,
+            result_file_path=result_file_path
+        )
+        database.add_defoe_query_task(query_task)
 
-    return jsonify({
-        "success": True,
-        "id": query_task.id,
-    })
+        return jsonify({
+            "success": True,
+            "id": query_task.id,
+        })
+    except:
+        return jsonify({
+            "success": False
+        })
 
 
 @query_protected.route("/upload", methods=["POST"])
@@ -584,12 +588,17 @@ def defoe_queries():
 def upload():
     user_id = get_jwt_identity()
     user_folder = os.path.join(files.uploads_path, user_id)
+    # Make directories relative to the working folder
     os.makedirs(user_folder, exist_ok=True)
-
     file = request.files['file']
     submit_name = secure_filename(file.filename)
     save_name = time.strftime("%Y%m%d-%H%M%S") + "_" + submit_name
-    file.save(os.path.join(user_folder, save_name))
+    source_file_path = os.path.join(user_folder, save_name)
+    print(source_file_path)
+    file.save(source_file_path)
+    # Upload it to Google Cloud Storage
+    # It will look from the relative path from the working folder
+    get_google_cloud_storage().upload_blob_from_filename(source_file_path, source_file_path)
 
     return jsonify({
         "success": True,
@@ -618,46 +627,78 @@ def defoe_status():
 
     try:
         # When query job is not done
-        job = get_defoe().get_status(task_id)
-        with job._lock:
-            # Update the defoe query task when the status changes
-            if job.done:
-                task = database.get_defoe_query_task_by_taskID(task_id)
-                task.progress = 100
-                task.errorMsg = job.error
-                database.update_defoe_query_task(task)
-                if hasattr(job, 'duration'):
-                    current_app.logger.info('It takes %.5f seconds to finish this job!', job.duration)
+        task = database.get_defoe_query_task_by_taskID(task_id)
 
-            return jsonify({
-                "id": job.id,
-                "results": job.result,
-                "error": job.error,
-                "done": job.done,
-            })
-    except ValueError:
-        # When query job is not running in defoe,
-        # Check if query info is stored in database
-        try:
-            task = database.get_defoe_query_task_by_taskID(task_id)
-            print('get task from database')
-            if task.progress == 100:
+        if task.progress == 100:
+            if task.errorMsg is None or task.errorMsg == "":
                 return jsonify({
-                    "id": task.id,
+                    "id": task_id,
                     "results": task.resultFile,
-                    "error": task.errorMsg,
-                    "done": True,
+                    "state": "DONE",
                 })
             else:
-                print('Task status lost!')
                 return jsonify({
-                    'error': 'Task status lost'
-                }, HTTPStatus.BAD_REQUEST)
-        except:
-            print('Task does not exist!')
+                    "id": task_id,
+                    "state": "ERROR",
+                    "error": task.errorMsg
+                })
+
+        status = get_defoe_service().get_status(task_id)
+        state = status["state"]
+        state_str = DefoeService.state_to_str(state)
+
+        print(status)
+        if state == JobStatus.State.DONE:
+            task.progress = 100
+            database.update_defoe_query_task(task)
+
             return jsonify({
-                'error': 'Task does not exist!'
-            }, HTTPStatus.BAD_REQUEST)
+                "id": task_id,
+                "results": task.resultFile,
+                "state": state_str,
+            })
+
+        if state == JobStatus.State.PENDING:
+            return jsonify({
+                "id": task_id,
+                "state": state_str,
+            })
+
+        if state == JobStatus.State.SETUP_DONE:
+            task.progress = 5
+            database.update_defoe_query_task(task)
+            return jsonify({
+                "id": task_id,
+                "state": state_str,
+            })
+
+        if state == JobStatus.State.RUNNING:
+            task.progress = 10
+            database.update_defoe_query_task(task)
+            return jsonify({
+                "id": task_id,
+                "state": state_str,
+            })
+
+        if state == JobStatus.State.ERROR:
+            task.progress = 10
+            database.update_defoe_query_task(task)
+            return jsonify({
+                "id": task_id,
+                "error": status["details"],
+                "state": state_str,
+            })
+
+        return jsonify({
+            "id": task_id,
+            "state": state_str,
+        })
+
+    except Exception as E:
+        print(E)
+        return jsonify({
+            'error': 'Job does not exist!'
+        }, HTTPStatus.BAD_REQUEST)
 
 
 @query_protected.route("/defoe_query_task", methods=['POST'])
@@ -682,19 +723,12 @@ def defoe_query_task():
 def defoe_query_result():
     user_id = get_jwt_identity()
     result_filename = request.json.get('result_filename')
-    result_filepath = result_filename_to_absolute_filepath(result_filename, user_id)
-    print(result_filepath)
+
     # Validate file path
     # If the file exists
-    if result_filepath is not None and not os.path.isfile(result_filepath):
-        print("file does not exist!")
-        return jsonify({
-            "error": 'File does not exist!'
-        }), HTTPStatus.BAD_REQUEST
     # TODO If the file is accessible to this user
-
     # Convert result to object
-    results = read_results(result_filepath)
+    results = get_google_cloud_storage().read_results(result_filename)
     return jsonify({
         "results": results
     })
@@ -718,11 +752,17 @@ def defoe_query_tasks():
 def download():
     user_id = get_jwt_identity()
     result_filename = request.json.get('result_filename', None)
-    result_file_path = result_filename_to_absolute_filepath(result_filename, user_id)
-    print(result_file_path)
-    zip_file_path = result_file_path[:-3] + "zip"
-    print(zip_file_path)
+    print(result_filename)
+    zip_file_path = result_filename[:-3] + "zip"
+    result_user_folder = os.path.dirname(result_filename)
+    print(result_user_folder)
+    # Make directories relative to the working folder
+    os.makedirs(result_user_folder, exist_ok=True)
+    print(os.path.basename(result_filename))
+    # It will download file to result_filename, which tells the relative path from the working folder
+    get_google_cloud_storage().download_blob_from_filename(result_filename, result_filename)
     with ZipFile(zip_file_path, 'w', ZIP_DEFLATED) as zipf:
-        zipf.write(result_file_path, arcname=os.path.basename(result_file_path))
+        zipf.write(result_filename, arcname=os.path.basename(result_filename))
 
-    return send_file(zip_file_path, as_attachment=True)
+    # send_file function will look for the absolute path of a file.
+    return send_file(os.path.abspath(zip_file_path), as_attachment=True)

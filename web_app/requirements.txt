@@ -24,3 +24,6 @@ flasgger
 psycopg2-binary
 validators
 flask_cors
+pytest
+google-cloud-storage
+google-cloud-dataproc

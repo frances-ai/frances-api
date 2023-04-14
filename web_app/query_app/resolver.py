@@ -4,11 +4,10 @@ import requests
 
 from .db import Database, DatabaseConfig
 
-from defoe_lib.config import DefoeConfig
-from defoe_lib.service import DefoeService
-
 from .controller.models import ModelsRepository
 from .controller.files import FilesConfig
+from .defoe_service import DefoeService
+from ..google_cloud.google_cloud_storage import GoogleCloudStorage
 
 CONSUL_VAR_NAME = "CONSUL_ADDRESS"
 CONSUL_PROTOCOL = "http://"
@@ -22,14 +21,12 @@ FRANCES_FRONT_DEFAULT_DOMAIN = "127.0.0.1"
 
 config = None
 frances = None
-defoe = None
 models = None
 database = None
 
 
 class QueryAppConfig:
     def __init__(self):
-        self.defoe = None
         self.database = None
         self.files = None
 
@@ -38,7 +35,6 @@ class QueryAppConfig:
         vals = json.loads(text)
         config = QueryAppConfig()
         config.frances = FrancesConfig.from_dict(vals["frances"])
-        config.defoe = DefoeConfig.from_dict(vals["defoe"])
         config.database = DatabaseConfig.from_dict(vals["database"])
         return config
 
@@ -135,14 +131,6 @@ def get_kg_url(kg_type):
     return get_kg_urls()[kg_type]
 
 
-def get_defoe():
-    global defoe
-    if defoe != None:
-        return defoe
-    defoe = DefoeService(get_config().defoe)
-    return defoe
-
-
 def get_models():
     global models
     if models != None:
@@ -157,3 +145,24 @@ def get_database():
         return database
     database = Database(get_config().database)
     return database
+
+
+MAIN_PYTHON_FILE_URI = "gs://frances2023/run_query.py"
+PYTHON_FILE_URIS = ["file:///home/defoe.zip"]
+PROJECT_ID = "frances-365422"
+BUCKET_NAME = "frances2023"
+CLUSTER = {
+    "cluster_name": "cluster-9a7f",
+    "project_id": PROJECT_ID,
+    "region": "us-central1"
+}
+
+
+def get_defoe_service():
+    return DefoeService(MAIN_PYTHON_FILE_URI, PYTHON_FILE_URIS, CLUSTER)
+
+
+def get_google_cloud_storage():
+    return GoogleCloudStorage(project_id=PROJECT_ID, bucket_name=BUCKET_NAME)
+
+

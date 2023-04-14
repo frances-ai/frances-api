@@ -1,10 +1,9 @@
 class FilesConfig:
   def __init__(self):
-    uploads_path = ""
-    results_path = ""
-    models_path = ""
-    defoe_path = ""
-    images_path = ""
+    self.uploads_path = ""
+    self.results_path = ""
+    self.models_path = ""
+    self.images_path = ""
   
   @staticmethod
   def from_dict(vals):
@@ -12,6 +11,5 @@ class FilesConfig:
     config.uploads_path = vals["uploads"]
     config.results_path = vals["results"]
     config.models_path = vals["models"]
-    config.defoe_path = vals["defoe"]
     config.images_path = vals["images"]
     return config
