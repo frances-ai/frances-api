@@ -40,14 +40,12 @@ class QueryAppConfig:
 
 
 class FrancesConfig:
-    def __init__(self, kg_urls=None, files=None):
-        self.kg_urls = kg_urls
+    def __init__(self, files=None):
         self.files = files
 
     @staticmethod
     def from_dict(vals):
         config = FrancesConfig()
-        config.kg_urls = vals["kgUrls"]
         config.files = FilesConfig.from_dict(vals["files"])
         return config
 
@@ -111,10 +109,6 @@ def get_files():
     return get_frances().files
 
 
-def get_kg_urls():
-    return get_frances().kg_urls
-
-
 kg_types_map = {
     'Encyclopaedia Britannica': 'total_eb',
     'Chapbooks printed in Scotland': 'chapbooks_scotland',
@@ -127,8 +121,14 @@ def get_kg_type(collection):
     return kg_types_map[collection]
 
 
+DEFAULT_KG_BASE_URL = "http://localhost:3030/"
+
+
 def get_kg_url(kg_type):
-    return get_kg_urls()[kg_type]
+    kg_base_url = os.getenv("KG_BASE_URL")
+    if kg_base_url is None:
+        kg_base_url = DEFAULT_KG_BASE_URL
+    return kg_base_url + kg_type + "/sparql"
 
 
 def get_models():
@@ -151,18 +151,28 @@ MAIN_PYTHON_FILE_URI = "gs://frances2023/run_query.py"
 PYTHON_FILE_URIS = ["file:///home/defoe.zip"]
 PROJECT_ID = "frances-365422"
 BUCKET_NAME = "frances2023"
-CLUSTER = {
+DEFAULT_CLUSTER = {
     "cluster_name": "cluster-9a7f",
     "project_id": PROJECT_ID,
     "region": "us-central1"
 }
 
 
+def get_cluster():
+    cluster_name = os.getenv("CLUSTER_NAME")
+    cluster_region = os.getenv("CLUSTER_REGION")
+    if cluster_name:
+        return {
+            "cluster_name": cluster_name,
+            "project_id": PROJECT_ID,
+            "region": cluster_region
+        }
+    return DEFAULT_CLUSTER
+
+
 def get_defoe_service():
-    return DefoeService(MAIN_PYTHON_FILE_URI, PYTHON_FILE_URIS, CLUSTER)
+    return DefoeService(MAIN_PYTHON_FILE_URI, PYTHON_FILE_URIS, get_cluster())
 
 
 def get_google_cloud_storage():
     return GoogleCloudStorage(project_id=PROJECT_ID, bucket_name=BUCKET_NAME)
-
-
