@@ -47,7 +47,7 @@ class DefoeService:
         )
 
     def submit_job(self, job_id, model_name, query_name, endpoint, query_config, result_file_path):
-        if (query_config['kg_type'] + '_' + query_name) in self.get_pre_computed_queries():
+        if (query_config['kg_type'] + '_' + query_name) in DefoeService.get_pre_computed_queries():
             DefoeService.preComputedJobID.append(job_id)
             return job_id
 
@@ -64,7 +64,13 @@ class DefoeService:
             "pyspark_job": {
                 "main_python_file_uri": self.main_python_file_uri,
                 "python_file_uris": self.python_file_uris,
-                "args": args
+                "args": args,
+                "properties": {
+                    "spark.executor.cores": "8",
+                    "spark.executor.instances": "34",
+                    "spark.dynamicAllocation.enabled": "false",
+                    "spark.cores.max": "272"
+                }
             },
         }
 
@@ -72,6 +78,7 @@ class DefoeService:
             operation = self.job_client.submit_job_as_operation(
                 request={"project_id": self.cluster["project_id"], "region": self.cluster["region"], "job": job}
             )
+
             print("Job submitted!")
             return operation.metadata.job_id
 
@@ -79,11 +86,10 @@ class DefoeService:
             raise Exception(E)
 
     def get_status(self, job_id):
-        print(DefoeService.preComputedJobID)
         if job_id in DefoeService.preComputedJobID:
             DefoeService.preComputedJobID.remove(job_id)
             return {
-                "state": JobStatus.State
+                "state": JobStatus.State.DONE
             }
 
         job = self.job_client.get_job(
@@ -105,26 +111,26 @@ if __name__ == "__main__":
     main_python_file_uri = "gs://frances2023/run_query.py"
     python_file_uris = ["file:///home/defoe.zip"]
     cluster = {
-        "cluster_name": "cluster-c001",
+        "cluster_name": "cluster-8753",
         "project_id": "frances-365422",
-        "region": "europe-central2"
+        "region": "us-central1"
     }
     service = DefoeService(main_python_file_uri, python_file_uris, cluster)
 
     model_name = "sparql"
-    query_name = "publication_normalized"
-    endpoint = "http://34.105.180.58:3030/total_eb/sparql"
+    query_name = "geoparser_by_year"
+    endpoint = "http://35.228.63.82:3030/chapbooks_scotland/sparql"
     query_config = {
-        "kg_type": "total_eb",
-        "start_year": "1780",
-        "end_year": "1800",
+        "kg_type": "chapbooks_scotland",
+        "start_year": "1700",
+        "end_year": "1899",
         "data": "animal.txt"
     }
-    result_file_path = "animal_result1.yml"
-    job_id = "13d8a0b5-1f95-5326-aa68-0a1dc9152658"
+    result_file_path = "animal_geo_result1.yml"
+    job_id = "customer_geo_animal1"
 
-    # service.submit_job(job_id, model_name, query_name, endpoint, query_config, result_file_path)
+    service.submit_job(job_id, model_name, query_name, endpoint, query_config, result_file_path)
 
-    another_service = DefoeService(main_python_file_uri, python_file_uris, cluster)
-    print(DefoeService.preComputedJobID)
-    print(another_service.get_status(job_id))
+    #another_service = DefoeService(main_python_file_uri, python_file_uris, cluster)
+    #print(DefoeService.preComputedJobID)
+    print(service.get_status(job_id))
