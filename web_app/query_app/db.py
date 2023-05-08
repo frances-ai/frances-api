@@ -32,8 +32,8 @@ class DatabaseConfig:
 
 
 def record_to_defoe_query_task(record):
-    config_record = record[:11]
-    task_record = record[11:]
+    config_record = record[:13]
+    task_record = record[13:]
     return DefoeQueryTask(*task_record[0:2], DefoeQueryConfig(*config_record), *task_record[3:])
 
 
@@ -137,11 +137,11 @@ class Database:
         return results
 
     def add_defoe_query_config(self, config):
-        sql = "INSERT INTO  DefoeQueryConfigs(configID, collection, queryType, preprocess, lexiconFile, targetSentences, targetFilter, startYear, endYear, hitCount, snippetWindow)" \
-              " VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s);"
+        sql = "INSERT INTO  DefoeQueryConfigs(configID, collection, queryType, preprocess, lexiconFile, targetSentences, targetFilter, startYear, endYear, hitCount, snippetWindow, gazetteer, boundingBox)" \
+              " VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s);"
         vals = (
         config.id, config.collection, config.queryType, config.preprocess, config.lexiconFile, config.targetSentences,
-        config.targetFilter, config.startYear, config.endYear, config.hitCount, config.window)
+        config.targetFilter, config.startYear, config.endYear, config.hitCount, config.window, config.gazetteer, config.boundingBox)
 
         cursor = self.db.cursor()
         cursor.execute(sql, vals)
@@ -178,7 +178,7 @@ class User:
 class DefoeQueryConfig:
     def __init__(self, id, collection, queryType, preprocess, lexiconFile, targetSentences, targetFilter, startYear,
                  endYear,
-                 hitCount, window):
+                 hitCount, window, gazetteer, boundingBox):
         self.id = id
         self.collection = collection
         self.preprocess = preprocess
@@ -190,15 +190,17 @@ class DefoeQueryConfig:
         self.endYear = endYear
         self.hitCount = hitCount
         self.window = window
+        self.gazetteer = gazetteer
+        self.boundingBox = boundingBox
+
 
     @staticmethod
     def create_new(collection, queryType, preprocess, lexiconFile, targetSentences, targetFilter, startYear, endYear,
-                   hitCount,
-                   window):
+                   hitCount, window, gazetteer, boundingBox):
         id = uuid.uuid5(uuid.NAMESPACE_URL, namespace + lexiconFile + str(time.time()))
         return DefoeQueryConfig(id, collection, queryType, preprocess, lexiconFile, targetSentences, targetFilter,
                                 startYear, endYear, hitCount,
-                                window)
+                                window, gazetteer, boundingBox)
 
     def to_dict(self):
         return {
@@ -211,7 +213,9 @@ class DefoeQueryConfig:
             "startYear": self.startYear,
             "endYear": self.endYear,
             "hitCount": self.hitCount,
-            "window": self.window
+            "window": self.window,
+            "gazetteer": self.gazetteer,
+            "boundingBox": self.boundingBox
         }
 
 

@@ -526,18 +526,22 @@ def defoe_queries():
     lexicon_file = request.json.get('file', '')
     config["data"] = os.path.join(files.uploads_path, user_id, lexicon_file)
 
+    # For geoparser_by_year query, add bounding_box and gazetteer
+    config["bounding_box"] = request.json.get('bounding_box')
+    config["gazetteer"] = request.json.get('gazetteer')
+
     if start_year is not None:
         config['start_year'] = str(start_year)
 
     if end_year is not None:
         config['end_year'] = str(end_year)
 
-    collection = request.json.get('collection', 'Encyclopaedia Britannica (1768-1860)')
+    collection = request.json.get('collection', 'Encyclopaedia Britannica')
 
     config['kg_type'] = get_kg_type(collection)
 
+    # For terms_snippet_keysearch_by_year query, add window
     window = request.json.get('window')
-
     config['window'] = str(window)
 
     # TODO validate config data
@@ -546,7 +550,7 @@ def defoe_queries():
     defoe_query_config = DefoeQueryConfig.create_new(collection, defoe_selection, config["preprocess"], lexicon_file,
                                                      target_sentences, config["target_filter"],
                                                      start_year, end_year, config["hit_count"],
-                                                     window)
+                                                     window, config["gazetteer"], config["bounding_box"])
     database.add_defoe_query_config(defoe_query_config)
 
     # Save defoe query task information to database
@@ -635,12 +639,14 @@ def defoe_status():
                     "id": task_id,
                     "results": task.resultFile,
                     "state": "DONE",
+                    "progress": task.progress
                 })
             else:
                 return jsonify({
                     "id": task_id,
                     "state": "ERROR",
-                    "error": task.errorMsg
+                    "error": task.errorMsg,
+                    "progress": task.progress
                 })
 
         status = get_defoe_service().get_status(task_id)
@@ -656,12 +662,14 @@ def defoe_status():
                 "id": task_id,
                 "results": task.resultFile,
                 "state": state_str,
+                "progress": task.progress
             })
 
         if state == JobStatus.State.PENDING:
             return jsonify({
                 "id": task_id,
                 "state": state_str,
+                "progress": task.progress
             })
 
         if state == JobStatus.State.SETUP_DONE:
@@ -670,6 +678,7 @@ def defoe_status():
             return jsonify({
                 "id": task_id,
                 "state": state_str,
+                "progress": task.progress
             })
 
         if state == JobStatus.State.RUNNING:
@@ -678,6 +687,7 @@ def defoe_status():
             return jsonify({
                 "id": task_id,
                 "state": state_str,
+                "progress": task.progress
             })
 
         if state == JobStatus.State.ERROR:
@@ -687,11 +697,13 @@ def defoe_status():
                 "id": task_id,
                 "error": status["details"],
                 "state": state_str,
+                "progress": task.progress
             })
 
         return jsonify({
             "id": task_id,
             "state": state_str,
+            "progress": task.progress
         })
 
     except Exception as E:

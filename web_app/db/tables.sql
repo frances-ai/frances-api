@@ -22,7 +22,9 @@ CREATE TABLE IF NOT EXISTS DefoeQueryConfigs (
   startYear INTEGER,
   endYear INTEGER,
   hitCount VARCHAR(10),
-  snippetWindow INTEGER
+  snippetWindow INTEGER,
+  gazetteer VARCHAR(20),
+  boundingBox VARCHAR(100)
 );
 
 CREATE TABLE IF NOT EXISTS DefoeQueryTasks (
