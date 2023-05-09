@@ -87,8 +87,8 @@ class Database:
         return
 
     def add_defoe_query_task(self, task):
-        sql = "INSERT INTO DefoeQueryTasks (taskID, userID, configID, resultFile, progress, errorMsg) VALUES (%s, %s, %s, %s, %s, %s);"
-        vals = (task.id, task.user_id, task.config.id, task.resultFile, task.progress, task.errorMsg)
+        sql = "INSERT INTO DefoeQueryTasks (taskID, userID, configID, resultFile, progress, state, errorMsg) VALUES (%s, %s, %s, %s, %s, %s, %s);"
+        vals = (task.id, task.user_id, task.config.id, task.resultFile, task.progress, task.state, task.errorMsg)
 
         cursor = self.db.cursor()
         cursor.execute(sql, vals)
@@ -96,21 +96,22 @@ class Database:
         return
 
     def update_defoe_query_task(self, task):
-        sql = "UPDATE DefoeQueryTasks SET progress=%s, errorMsg=%s WHERE taskID=%s;"
-        vals = (task.progress, task.errorMsg, task.id)
+        sql = "UPDATE DefoeQueryTasks SET progress=%s, state=%s, errorMsg=%s WHERE taskID=%s;"
+        vals = (task.progress, task.state, task.errorMsg, task.id)
 
         cursor = self.db.cursor()
         cursor.execute(sql, vals)
         self.db.commit()
         return
 
-    def get_defoe_query_task_by_taskID(self, taskID):
+    def get_defoe_query_task_by_taskID(self, taskID, userID):
         sql = "SELECT * " \
               "FROM DefoeQueryConfigs " \
               "INNER JOIN DefoeQueryTasks ON DefoeQueryTasks.configID = DefoeQueryConfigs.configID " \
-              "WHERE DefoeQueryTasks.taskID=%s;"
+              "WHERE DefoeQueryTasks.taskID=%s " \
+              "AND DefoeQueryTasks.userID=%s;"
         cursor = self.db.cursor()
-        cursor.execute(sql, (taskID,))
+        cursor.execute(sql, (taskID, userID))
 
         records = cursor.fetchall()
         if len(records) == 0:
@@ -220,19 +221,20 @@ class DefoeQueryConfig:
 
 
 class DefoeQueryTask:
-    def __init__(self, id, user_id, config, resultFile, progress, errorMsg, submitTime):
+    def __init__(self, id, user_id, config, resultFile, progress, state, errorMsg, submitTime):
         self.id = id
         self.user_id = user_id
         self.config = config
         self.resultFile = resultFile
         self.progress = progress
+        self.state = state
         self.errorMsg = errorMsg
         self.submitTime = submitTime
 
     @staticmethod
     def create_new(user_id, config, resultFile, errorMsg):
         id = uuid.uuid5(uuid.NAMESPACE_URL, namespace + resultFile + str(time.time()))
-        return DefoeQueryTask(id, user_id, config, resultFile, 0, errorMsg, "")
+        return DefoeQueryTask(id, user_id, config, resultFile, 0, "PENDING", errorMsg, "")
 
     def to_dict(self):
         return {
@@ -240,6 +242,7 @@ class DefoeQueryTask:
             "config": self.config.to_dict(),
             "resultFile": self.resultFile,
             "progress": self.progress,
+            "state": self.state,
             "errorMsg": self.errorMsg,
             "submit_time": self.submitTime.strftime("%Y-%m-%d %H:%M:%S.%f")
         }

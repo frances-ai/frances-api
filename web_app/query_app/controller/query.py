@@ -580,9 +580,43 @@ def defoe_queries():
             "success": True,
             "id": query_task.id,
         })
-    except:
+    except Exception as e:
+        current_app.logger.info(e)
         return jsonify({
             "success": False
+        })
+
+
+@query_protected.route("/defoe_cancel", methods=["POST"])
+@jwt_required()
+def cancel_defoe_query():
+    user_id = get_jwt_identity()
+    task_id = request.json.get("id")
+    task = database.get_defoe_query_task_by_taskID(task_id, user_id)
+
+    if task is None:
+        # No such defoe query task
+        return jsonify({
+            "success": False,
+            "error": "No such task!"
+        })
+
+    if task.state != 'PENDING' and task.state != 'RUNNING':
+        # Task has been finished, can not be cancelled
+        return jsonify({
+            "success": False,
+            "error": "Current state: %s, Task can only be cancelled when it is pending or running!" % task.state
+        })
+
+    try:
+        get_defoe_service().cancel_job(task_id)
+        return jsonify({
+            "success": True
+        })
+    except Exception as e:
+        return jsonify({
+            "success": False,
+            "error": str(e)
         })
 
 
@@ -622,6 +656,7 @@ def defoe_list():
 @swag_from("../docs/query/defoe_status.yml")
 @jwt_required()
 def defoe_status():
+    user_id = get_jwt_identity()
     task_id = request.json.get("id")
     # Validate task_id
     # If the task exits
@@ -630,81 +665,65 @@ def defoe_status():
     current_app.logger.info('task_id: %s', task_id)
 
     try:
-        # When query job is not done
-        task = database.get_defoe_query_task_by_taskID(task_id)
+        task = database.get_defoe_query_task_by_taskID(task_id, user_id)
 
-        if task.progress == 100:
-            if task.errorMsg is None or task.errorMsg == "":
-                return jsonify({
-                    "id": task_id,
-                    "results": task.resultFile,
-                    "state": "DONE",
-                    "progress": task.progress
-                })
-            else:
-                return jsonify({
-                    "id": task_id,
-                    "state": "ERROR",
-                    "error": task.errorMsg,
-                    "progress": task.progress
-                })
+        # When query job is done
+        if task.state == "DONE":
+            return jsonify({
+                "id": task_id,
+                "results": task.resultFile,
+                "state": task.state,
+                "progress": task.progress
+            })
+        if task.state == "ERROR":
+            return jsonify({
+                "id": task_id,
+                "state": "ERROR",
+                "error": task.errorMsg,
+                "progress": task.progress
+            })
+
+        if task.state == "CANCELLED":
+            return jsonify({
+                "id": task_id,
+                "state": task.state,
+                "progress": task.progress
+            })
+
+        # When query job is not done
 
         status = get_defoe_service().get_status(task_id)
         state = status["state"]
         state_str = DefoeService.state_to_str(state)
+        output = {
+            "id": task_id,
+        }
 
-        print(status)
         if state == JobStatus.State.DONE:
             task.progress = 100
-            database.update_defoe_query_task(task)
+            output["results"] = task.resultFile
 
-            return jsonify({
-                "id": task_id,
-                "results": task.resultFile,
-                "state": state_str,
-                "progress": task.progress
-            })
-
-        if state == JobStatus.State.PENDING:
-            return jsonify({
-                "id": task_id,
-                "state": state_str,
-                "progress": task.progress
-            })
-
-        if state == JobStatus.State.SETUP_DONE:
+        elif state == JobStatus.State.SETUP_DONE:
             task.progress = 5
-            database.update_defoe_query_task(task)
-            return jsonify({
-                "id": task_id,
-                "state": state_str,
-                "progress": task.progress
-            })
 
-        if state == JobStatus.State.RUNNING:
+        elif state == JobStatus.State.RUNNING:
             task.progress = 10
-            database.update_defoe_query_task(task)
-            return jsonify({
-                "id": task_id,
-                "state": state_str,
-                "progress": task.progress
-            })
 
-        if state == JobStatus.State.ERROR:
-            task.progress = 10
-            database.update_defoe_query_task(task)
-            return jsonify({
-                "id": task_id,
-                "error": status["details"],
-                "state": state_str,
-                "progress": task.progress
-            })
+        elif state == JobStatus.State.ERROR:
+            task.progress = 100
+            output["error"] = status["details"]
 
-        return jsonify({
-            "id": task_id,
-            "state": state_str,
-            "progress": task.progress
-        })
+        elif state == JobStatus.State.CANCELLED:
+            task.progress = 100
+
+        if state_str != task.state:
+            task.state = state_str
+            database.update_defoe_query_task(task)
+
+        output["state"] = task.state
+        output["progress"] = task.progress
+
+        return jsonify(output)
 
     except Exception as E:
         print(E)
@@ -716,10 +735,11 @@ def defoe_status():
 @query_protected.route("/defoe_query_task", methods=['POST'])
 @jwt_required()
 def defoe_query_task():
+    user_id = get_jwt_identity()
     task_id = request.json.get('task_id')
     # Validate task_id
     # If this task exists
-    task = database.get_defoe_query_task_by_taskID(task_id)
+    task = database.get_defoe_query_task_by_taskID(task_id, user_id)
     if task is None:
         return jsonify({
             "error": 'This Defoe Query Task does not exist!'

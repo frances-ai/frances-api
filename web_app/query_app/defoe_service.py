@@ -106,10 +106,18 @@ class DefoeService:
             "state": job.status.state
         }
 
+    def cancel_job(self, job_id):
+        try:
+            self.job_client.cancel_job(
+                request={"project_id": self.cluster["project_id"], "region": self.cluster["region"], "job_id": job_id}
+            )
+        except Exception as e:
+            raise Exception(e)
+
 
 if __name__ == "__main__":
     main_python_file_uri = "gs://frances2023/run_query.py"
-    python_file_uris = ["file:///home/defoe.zip"]
+    python_file_uris = ["gs://frances2023/defoe.zip"]
     cluster = {
         "cluster_name": "cluster-8753",
         "project_id": "frances-365422",
@@ -119,15 +127,15 @@ if __name__ == "__main__":
 
     model_name = "sparql"
     query_name = "geoparser_by_year"
-    endpoint = "http://35.228.63.82:3030/chapbooks_scotland/sparql"
+    endpoint = "http://35.228.63.82:3030/total_eb/sparql"
     query_config = {
-        "kg_type": "chapbooks_scotland",
+        "kg_type": "total_eb",
         "start_year": "1700",
-        "end_year": "1899",
+        "end_year": "1800",
         "data": "animal.txt"
     }
     result_file_path = "animal_geo_result1.yml"
-    job_id = "customer_geo_animal1"
+    job_id = "customer_geo_animal22"
 
     service.submit_job(job_id, model_name, query_name, endpoint, query_config, result_file_path)
 
