@@ -27,6 +27,7 @@ sentiment_documents=[]
 cont=0
 for i in documents:
     text=i.lower()
+    print("Trying document {}".format(cont))
     try:
         sentiment_documents.append(sentiment_analysis(text))
     except:

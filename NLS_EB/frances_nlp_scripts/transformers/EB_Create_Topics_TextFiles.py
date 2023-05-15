@@ -22,7 +22,7 @@ from rdflib.plugins.sparql import prepareQuery
 import os
 from SPARQLWrapper import SPARQLWrapper, JSON
 
-sparql = SPARQLWrapper("http://localhost:3030/total_eb/sparql")
+sparql = SPARQLWrapper("http://35.228.63.82:3030/eb1/sparql")
 query="""
 PREFIX eb: <https://w3id.org/eb#>
 PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
@@ -44,7 +44,6 @@ SELECT ?definition ?uri ?term ?vnum ?year ?enum ?letters ?part
 """ 
 sparql.setQuery(query)
 sparql.setReturnFormat(JSON)
-results = sparql.query().convert()
 results = sparql.query().convert()
 topics_documents=[]
 topics_info=[]

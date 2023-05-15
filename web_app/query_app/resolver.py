@@ -23,6 +23,8 @@ config = None
 frances = None
 models = None
 database = None
+defoe_service = None
+cloud_storage_service = None
 
 
 class QueryAppConfig:
@@ -121,7 +123,7 @@ def get_kg_type(collection):
     return kg_types_map[collection]
 
 
-DEFAULT_KG_BASE_URL = "http://localhost:3030/"
+DEFAULT_KG_BASE_URL = "http://35.228.63.82:3030/"
 
 
 def get_kg_url(kg_type):
@@ -152,7 +154,7 @@ PYTHON_FILE_URIS = ["file:///home/defoe.zip"]
 PROJECT_ID = "frances-365422"
 BUCKET_NAME = "frances2023"
 DEFAULT_CLUSTER = {
-    "cluster_name": "cluster-9a7f",
+    "cluster_name": "cluster-8753",
     "project_id": PROJECT_ID,
     "region": "us-central1"
 }
@@ -171,8 +173,16 @@ def get_cluster():
 
 
 def get_defoe_service():
-    return DefoeService(MAIN_PYTHON_FILE_URI, PYTHON_FILE_URIS, get_cluster())
+    global defoe_service
+    if defoe_service is not None:
+        return defoe_service
+    defoe_service = DefoeService(MAIN_PYTHON_FILE_URI, PYTHON_FILE_URIS, get_cluster())
+    return defoe_service
 
 
 def get_google_cloud_storage():
-    return GoogleCloudStorage(project_id=PROJECT_ID, bucket_name=BUCKET_NAME)
+    global cloud_storage_service
+    if cloud_storage_service is not None:
+        return cloud_storage_service
+    cloud_storage_service = GoogleCloudStorage(project_id=PROJECT_ID, bucket_name=BUCKET_NAME)
+    return cloud_storage_service

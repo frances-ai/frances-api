@@ -1,4 +1,3 @@
-import proto
 from google.cloud import dataproc
 from google.cloud.dataproc_v1 import JobStatus
 
@@ -19,7 +18,11 @@ class DefoeService:
         return {
             "total_eb_publication_normalized": "precomputedResult/total_eb_publication_normalized.yml",
             "chapbooks_scotland_publication_normalized": "precomputedResult"
-                                                         "/chapbooks_scotland_publication_normalized.yml"
+                                                         "/chapbooks_scotland_publication_normalized.yml",
+            "gazetteers_scotland_publication_normalized": "precomputedResult"
+                                                         "/gazetteers_scotland_publication_normalized.yml",
+            "ladies_publication_normalized": "precomputedResult"
+                                                         "/ladies_publication_normalized.yml",
         }
 
     @staticmethod
@@ -126,16 +129,13 @@ if __name__ == "__main__":
     service = DefoeService(main_python_file_uri, python_file_uris, cluster)
 
     model_name = "sparql"
-    query_name = "geoparser_by_year"
-    endpoint = "http://35.228.63.82:3030/total_eb/sparql"
+    query_name = "publication_normalized"
+    endpoint = "http://35.228.63.82:3030/ladies/sparql"
     query_config = {
-        "kg_type": "total_eb",
-        "start_year": "1700",
-        "end_year": "1800",
-        "data": "animal.txt"
+        "kg_type": "ladies",
     }
-    result_file_path = "animal_geo_result1.yml"
-    job_id = "customer_geo_animal22"
+    result_file_path = "ladies_publication_normalized.yml"
+    job_id = "customer_ladies_publication_normalized1"
 
     service.submit_job(job_id, model_name, query_name, endpoint, query_config, result_file_path)
 
