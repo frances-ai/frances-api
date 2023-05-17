@@ -745,6 +745,13 @@ def defoe_query_task():
             "error": 'This Defoe Query Task does not exist!'
         }), HTTPStatus.BAD_REQUEST
     else:
+        if task.config.queryType == "frequency_keysearch_by_year":
+            kg_type = get_kg_type(task.config.collection)
+            query_info = kg_type + "_publication_normalized"
+            return jsonify({
+                "task": task.to_dict(),
+                "publication_normalized_result_path": DefoeService.get_pre_computed_queries()[query_info]
+            }), HTTPStatus.OK
         return jsonify({
             "task": task.to_dict()
         }), HTTPStatus.OK
