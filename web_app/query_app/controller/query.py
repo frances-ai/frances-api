@@ -20,6 +20,7 @@ from operator import itemgetter
 
 from werkzeug.utils import secure_filename
 
+from ..core import limiter
 from ..defoe_service import DefoeService
 from ..resolver import get_models, get_files, get_database, get_kg_type, get_defoe_service, get_google_cloud_storage
 from flasgger import swag_from
@@ -36,6 +37,7 @@ database = get_database()
 @query.route("/term_search/<string:termlink>", methods=['GET'])
 @query.route("/term_search", methods=['POST'])
 @swag_from("../docs/query/term_search.yml")
+@limiter.limit("5/minute")  # 5 requests per minute
 def term_search(termlink=None):
     if request.method == "POST":
         term = request.json.get("search")
@@ -130,6 +132,7 @@ def visualization_resources():
 
 @query.route("/similar_terms", methods=["GET", "POST"])
 @swag_from("../docs/query/similar_terms.yml")
+@limiter.limit("3/minute")  # 3 requests per minute
 def similar_terms(termlink=None):
     uri = ""
     uri_raw = ""
@@ -279,6 +282,7 @@ def similar_terms(termlink=None):
 
 @query.route("/topic_modelling", methods=["GET", "POST"])
 @swag_from("../docs/query/topic_modelling.yml")
+@limiter.limit("5/minute")  # 5 requests per minute
 def topic_modelling(topic_name=None):
     topic_name = request.args.get('topic_name', None)
     num_topics = len(models.t_names) - 2
@@ -348,6 +352,7 @@ def topic_modelling(topic_name=None):
 
 @query.route("/spelling_checker", methods=["GET", "POST"])
 @swag_from("../docs/query/spelling_checker.yml")
+@limiter.limit("5/minute")  # 5 requests per minute
 def spelling_checker(termlink=None):
     uri_raw = ""
     uri = ""
@@ -509,6 +514,7 @@ def evolution_of_terms(termlink=None):
 @query_protected.route("/defoe_submit", methods=["POST"])
 @swag_from("../docs/query/defoe_submit.yml")
 @jwt_required()
+@limiter.limit("2/minute")  # 2 requests per minute
 def defoe_queries():
     user_id = get_jwt_identity()
 
@@ -623,6 +629,7 @@ def cancel_defoe_query():
 @query_protected.route("/upload", methods=["POST"])
 @swag_from("../docs/query/upload.yml")
 @jwt_required()
+@limiter.limit("2/second")  # 2 requests per second
 def upload():
     user_id = get_jwt_identity()
     user_folder = os.path.join(files.uploads_path, user_id)
