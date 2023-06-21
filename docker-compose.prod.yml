@@ -1,0 +1,59 @@
+version: "3.9"
+services:
+  database:
+    image: postgres
+    environment:
+      - POSTGRES_USER=frances
+      - POSTGRES_PASSWORD=frances
+    volumes:
+      - ./postgres/data:/var/lib/postgresql/data
+  fuseki:
+    image: stain/jena-fuseki
+    ports:
+      - "3030:3030"
+    environment:
+      - ADMIN_PASSWORD=pass123
+      - JVM_ARGS=-Xmx4g
+    deploy:
+      resources:
+        limits:
+          cpus: "6"
+          memory: 10gb
+    healthcheck:
+      test: curl --fail http://fuseki:3030 || exit 1
+      interval: 60s
+      retries: 5
+      start_period: 20s
+      timeout: 10s
+  frances-api:
+    image: <docker username>/frances-api-dataproc:v2
+    ports:
+      - "80:80"
+      - "8080:8080"
+      - "5000:5000"
+    volumes:
+      - /home/<google cloud username>/.config/gcloud/application_default_credentials.json:/gcp/creds.json
+    environment:
+      - FRANCES_FRONT_DOMAIN=<cloud vm domain>
+      - FRANCES_FRONT_PORT=3000
+      - KG_BASE_URL=http://<cloud vm domain>:3030/
+      - PROJECT_ID=<dataproc project id>
+      - CLUSTER_NAME=<datapro cluster name>
+      - CLUSTER_REGION=<datapro cluster region>
+      - GOOGLE_APPLICATION_CREDENTIALS=/gcp/creds.json
+    depends_on:
+      consul:
+        condition: service_started
+      database:
+        condition: service_started
+      fuseki:
+        condition: service_healthy
+  frances-front:
+    image: <docker username>/frances-front-dataproc:v2
+    ports:
+      - "3000:3000"
+    environment:
+    - REACT_APP_FRANCES_API_ADDRESS=http://<cloud vm domain>:5000/api/v1
+    depends_on:
+      frances-api:
+        condition: service_started

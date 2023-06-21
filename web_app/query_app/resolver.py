@@ -22,12 +22,12 @@ database = None
 defoe_service = None
 cloud_storage_service = None
 
-kg_base_url = "http://35.228.63.82:3030/"
+kg_base_url = "http://127.0.0.1:3030/"
 
 if os.getenv("KG_BASE_URL"):
     kg_base_url = os.getenv("KG_BASE_URL")
 
-MODEL = "gs"
+MODEL = "local"
 
 
 def get_front_env():
