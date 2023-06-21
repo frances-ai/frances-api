@@ -9,3 +9,6 @@ node_modules
 
 # Linux files being edited
 *~
+/NLS_EB/
+/NLS_Generic/
+/presentation/

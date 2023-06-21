@@ -1,159 +1,107 @@
 import os
-import json
-import requests
 
-from .db import Database, DatabaseConfig
+from .db import Database
 
-from defoe_lib.config import DefoeConfig
-from defoe_lib.service import DefoeService
+from ..defoe_service.dataproc_defoe_service import DataprocDefoeService
+from ..defoe_service.local_defoe_service import LocalDefoeService
+from ..google_cloud.google_cloud_storage import GoogleCloudStorage
 
-from .controller.models import ModelsRepository
-from .controller.files import FilesConfig
-
-CONSUL_VAR_NAME = "CONSUL_ADDRESS"
-CONSUL_PROTOCOL = "http://"
-CONSUL_DEFAULT_ADDRESS = "localhost:8500"
-CONFIG_PATH = "/v1/kv/frances/config?raw"
+HTTP_PROTOCOL = "http://"
 
 FRANCES_FRONT_DOMAIN_VAR_NAME = "FRANCES_FRONT_DOMAIN"
 FRANCES_FRONT_PORT_VAR_NAME = "FRANCES_FRONT_PORT"
 FRANCES_FRONT_DEFAULT_PORT = "3000"
 FRANCES_FRONT_DEFAULT_DOMAIN = "127.0.0.1"
 
-config = None
-frances = None
-defoe = None
-models = None
+LOCAL_DEFOE_GRPC_CHANNEL = "localhost:5052"
+LOCAL_DATABASE_HOST = "127.0.1"
+DATABASE_USER = "frances"
+DATABASE_PASSWORD = "frances"
+
 database = None
+defoe_service = None
+cloud_storage_service = None
 
+kg_base_url = "http://35.228.63.82:3030/"
 
-class QueryAppConfig:
-    def __init__(self):
-        self.defoe = None
-        self.database = None
-        self.files = None
+if os.getenv("KG_BASE_URL"):
+    kg_base_url = os.getenv("KG_BASE_URL")
 
-    @staticmethod
-    def from_json(text):
-        vals = json.loads(text)
-        config = QueryAppConfig()
-        config.frances = FrancesConfig.from_dict(vals["frances"])
-        config.defoe = DefoeConfig.from_dict(vals["defoe"])
-        config.database = DatabaseConfig.from_dict(vals["database"])
-        return config
-
-
-class FrancesConfig:
-    def __init__(self, kg_urls=None, files=None):
-        self.kg_urls = kg_urls
-        self.files = files
-
-    @staticmethod
-    def from_dict(vals):
-        config = FrancesConfig()
-        config.kg_urls = vals["kgUrls"]
-        config.files = FilesConfig.from_dict(vals["files"])
-        return config
-
-
-def get_config_url():
-    consul_var = os.getenv(CONSUL_VAR_NAME)
-    consul_address = None
-
-    if consul_var != None:
-        consul_address = consul_var
-    else:
-        consul_address = CONSUL_DEFAULT_ADDRESS
-
-    return CONSUL_PROTOCOL + consul_address + CONFIG_PATH
+MODEL = "local"
 
 
 def get_front_env():
     domain_var = os.getenv(FRANCES_FRONT_DOMAIN_VAR_NAME)
-    domain = None
-
     if domain_var != None:
         domain = domain_var
     else:
         domain = FRANCES_FRONT_DEFAULT_DOMAIN
 
     port_var = os.getenv(FRANCES_FRONT_PORT_VAR_NAME)
-    port = None
 
     if port_var != None:
         port = port_var
     else:
         port = FRANCES_FRONT_DEFAULT_PORT
+
     return {
         'DOMAIN': domain,
-        'ADDRESS': CONSUL_PROTOCOL + domain + ':' + port
+        'ADDRESS': HTTP_PROTOCOL + domain + ':' + port
     }
-
-
-def get_config():
-    global config
-    if config != None:
-        return config
-    url = get_config_url()
-    print("Resolved consul address as: " + url)
-
-    resp = requests.get(url)
-    print("Consul config retrieved:")
-    print(resp.text)
-
-    config = QueryAppConfig.from_json(resp.text)
-    return config
-
-
-def get_frances():
-    # this is only a config
-    return get_config().frances
-
-
-def get_files():
-    # this is only a config
-    return get_frances().files
-
-
-def get_kg_urls():
-    return get_frances().kg_urls
-
-
-kg_types_map = {
-    'Encyclopaedia Britannica': 'total_eb',
-    'Chapbooks printed in Scotland': 'chapbooks_scotland',
-    'Ladies’ Edinburgh Debating Society': 'ladies',
-    'Gazetteers of Scotland': 'gazetteers_scotland'
-}
-
-
-def get_kg_type(collection):
-    return kg_types_map[collection]
-
-
-def get_kg_url(kg_type):
-    return get_kg_urls()[kg_type]
-
-
-def get_defoe():
-    global defoe
-    if defoe != None:
-        return defoe
-    defoe = DefoeService(get_config().defoe)
-    return defoe
-
-
-def get_models():
-    global models
-    if models != None:
-        return models
-    models = ModelsRepository(get_files())
-    return models
 
 
 def get_database():
     global database
     if database != None:
         return database
-    database = Database(get_config().database)
+    database_config = {
+        "host": LOCAL_DATABASE_HOST,
+        "user": DATABASE_USER,
+        "password": DATABASE_PASSWORD
+    }
+    if MODEL != "local":
+        database_config["host"] = "database"
+    database = Database(database_config)
     return database
+
+
+MAIN_PYTHON_FILE_URI = "gs://frances2023/run_query.py"
+PYTHON_FILE_URIS = ["file:///home/defoe.zip"]
+PROJECT_ID = "frances-365422"
+BUCKET_NAME = "frances2023"
+DEFAULT_CLUSTER = {
+    "cluster_name": "cluster-8753",
+    "project_id": PROJECT_ID,
+    "region": "us-central1"
+}
+
+
+def get_cluster():
+    cluster_name = os.getenv("CLUSTER_NAME")
+    cluster_region = os.getenv("CLUSTER_REGION")
+    if cluster_name:
+        return {
+            "cluster_name": cluster_name,
+            "project_id": PROJECT_ID,
+            "region": cluster_region
+        }
+    return DEFAULT_CLUSTER
+
+
+def get_defoe_service():
+    global defoe_service
+    if defoe_service is not None:
+        return defoe_service
+    if MODEL == "dataproc":
+        defoe_service = DataprocDefoeService(MAIN_PYTHON_FILE_URI, PYTHON_FILE_URIS, get_cluster())
+    elif MODEL == "local":
+        defoe_service = LocalDefoeService(channel=LOCAL_DEFOE_GRPC_CHANNEL)
+    return defoe_service
+
+
+def get_google_cloud_storage():
+    global cloud_storage_service
+    if cloud_storage_service is not None:
+        return cloud_storage_service
+    cloud_storage_service = GoogleCloudStorage(project_id=PROJECT_ID, bucket_name=BUCKET_NAME)
+    return cloud_storage_service

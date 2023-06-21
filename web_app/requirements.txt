@@ -1,6 +1,6 @@
-flask_bootstrap
 rdflib
 flask_paginate
+Flask<=2.2.0
 SPARQLWrapper
 lxml
 bertopic==0.10.0
@@ -17,10 +17,17 @@ spacy
 matplotlib
 chart_studio
 plotly
-numba
+numba<=0.56.4
 networkx
 flask-jwt-extended
 flasgger
 psycopg2-binary
 validators
 flask_cors
+pytest
+google-cloud-storage
+google-cloud-dataproc
+Flask-Limiter
+sendgrid
+grpcio
+grpcio-tools

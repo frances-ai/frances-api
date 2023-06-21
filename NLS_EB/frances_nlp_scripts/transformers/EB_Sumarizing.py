@@ -16,7 +16,7 @@ with open ('topics_definitions.txt', 'rb') as fp:
     topics_documents = pickle.load(fp)
 with open('topics_details.txt', 'rb') as fp2:
     topics_info = pickle.load(fp2)
-with open('topics_uristxt', 'rb') as fp3:
+with open('topics_uris.txt', 'rb') as fp3:
     topics_uris = pickle.load(fp3)
 
 indices_ed=["1_1771","1_1773","2","3", "3_supplement", "4",\

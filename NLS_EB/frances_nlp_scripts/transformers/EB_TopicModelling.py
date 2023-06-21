@@ -39,7 +39,7 @@ def get_topic_name(index_uri, topics, topic_model):
 with open('terms_definitions_final.txt', 'rb') as fp:
     documents = pickle.load(fp)
 
-embeddings = np.load('embeddings_mpnet.npy')
+#embeddings = np.load('embeddings_mpnet.npy')
 print("phase 1")
 
 # Define UMAP model to reduce embeddings dimension
@@ -78,12 +78,12 @@ for i in range(0, len(topics)):
 
 #### removing spaces:
 
-topics_names_new[]
+topics_names_new=[]
 for i in topics_names:
     topics_names_new.append(i.replace(" ", "_"))
 
 
-t_names_new[]
+t_names_new=[]
 for i in t_names:
     t_names_new.append(i.replace(" ", "_"))
 

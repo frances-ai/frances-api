@@ -52,7 +52,7 @@ def get_document(uri):
     definition=results["results"]["bindings"][0]["definition"]["value"]
     return term, definition
 
-sparql = SPARQLWrapper("http://localhost:3030/total_eb/sparql")
+sparql = SPARQLWrapper("http://35.228.63.82:3030/eb1/sparql")
 query="""
 PREFIX eb: <https://w3id.org/eb#>
 PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
@@ -88,7 +88,6 @@ SELECT ?definition ?uri ?term ?vnum ?year ?enum ?letters ?part
 sparql.setQuery(query)
 sparql.setReturnFormat(JSON)
 results = sparql.query().convert()
-results = sparql.query().convert()
 documents=[]
 terms_info=[]
 uris=[]
@@ -100,7 +99,7 @@ for r in results["results"]["bindings"]:
     else:
         terms_info.append([r["term"]["value"], r["enum"]["value"], r["year"]["value"], "" , r["vnum"]["value"], r["letters"]["value"]])
 
-with open('terms_definition.txt', 'wb') as fp:
+with open('terms_definitions.txt', 'wb') as fp:
     pickle.dump(documents, fp)
     
 with open('terms_details.txt', 'wb') as fp2:

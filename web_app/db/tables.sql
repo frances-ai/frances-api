@@ -8,8 +8,9 @@ CREATE TABLE IF NOT EXISTS Users (
   createdAt TIMESTAMP WITHOUT TIME ZONE NOT NULL
                                    DEFAULT (current_timestamp AT TIME ZONE 'UTC'),
   updatedAt TIMESTAMP WITHOUT TIME ZONE,
-  status VARCHAR (20) NOT NULL DEFAULT 'active' CHECK (status IN ('active', 'pending', 'deleted'))
+  status VARCHAR (20) NOT NULL DEFAULT 'pending' CHECK (status IN ('active', 'pending', 'deleted'))
 );
+
 
 CREATE TABLE IF NOT EXISTS DefoeQueryConfigs (
   configID UUID PRIMARY KEY NOT NULL,
@@ -22,7 +23,9 @@ CREATE TABLE IF NOT EXISTS DefoeQueryConfigs (
   startYear INTEGER,
   endYear INTEGER,
   hitCount VARCHAR(10),
-  snippetWindow INTEGER
+  snippetWindow INTEGER,
+  gazetteer VARCHAR(20),
+  boundingBox VARCHAR(100)
 );
 
 CREATE TABLE IF NOT EXISTS DefoeQueryTasks (
@@ -31,6 +34,7 @@ CREATE TABLE IF NOT EXISTS DefoeQueryTasks (
   configID UUID NOT NULL,
   resultFile TEXT NOT NULL,
   progress SMALLINT NOT NULL DEFAULT 0,
+  state VARCHAR(30) NOT NULL DEFAULT 'PENDING',
   errorMsg VARCHAR (255) NOT NULL,
 
   submitTime TIMESTAMP WITHOUT TIME ZONE NOT NULL
@@ -39,4 +43,3 @@ CREATE TABLE IF NOT EXISTS DefoeQueryTasks (
   FOREIGN KEY (userID) REFERENCES Users(userID),
   FOREIGN KEY (configID) REFERENCES DefoeQueryConfigs(configID)
 );
-

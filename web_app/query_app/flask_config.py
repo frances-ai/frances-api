@@ -5,7 +5,7 @@ from datetime import timedelta
 from rdflib.namespace import Namespace, RDF, RDFS, OWL, XSD
 from rdflib.namespace import SKOS, DOAP, FOAF, DC, DCTERMS
 
-from .resolver import get_front_env
+from .resolver import get_front_env, MODEL, kg_base_url, get_database, get_defoe_service, get_google_cloud_storage
 
 
 class DefaultFlaskConfig:
@@ -13,6 +13,8 @@ class DefaultFlaskConfig:
 
     BASE_DIR = Path(os.path.abspath(os.path.dirname(__file__)))
     SECRET_KEY = os.urandom(64)
+
+    WEB_APP_DIR = BASE_DIR.parent.absolute()
 
     # Prefixes and namespaces to use.
     NAMESPACES = dict(
@@ -37,17 +39,37 @@ class DefaultFlaskConfig:
         ".xml": "xml",
     }
 
-    UPLOAD_FOLDER = str(BASE_DIR) + "/query_app/upload_folder"
+    KG_TYPES_MAP = {
+        'Encyclopaedia Britannica': 'total_eb',
+        'Chapbooks printed in Scotland': 'chapbooks_scotland',
+        'Ladies’ Edinburgh Debating Society': 'ladies',
+        'Gazetteers of Scotland': 'gazetteers_scotland'
+    }
 
-    CONFIG_FOLDER = str(BASE_DIR) + "/query_app/config_folder"
+    UPLOAD_FOLDER = str(BASE_DIR) + "/upload_folder"
 
-    RESULTS_FOLDER = str(BASE_DIR) + "/query_app/defoe_results"
+    CONFIG_FOLDER = str(BASE_DIR) + "/config_folder"
 
-    IMAGES_FOLDER = str(BASE_DIR) + "/images"
+    RESULTS_FOLDER = str(BASE_DIR) + "/defoe_results"
 
-    MODELS_FOLDER = str(BASE_DIR) + "/models"
+    IMAGES_FOLDER = str(WEB_APP_DIR) + "/images"
+
+    MODELS_FOLDER = str(WEB_APP_DIR) + "/models"
+
+    FILE_STORAGE_MODE = MODEL
+
+    DATABASE = get_database()
+
+    KG_BASE_URL = kg_base_url
+
+    DEFOE_SERVICE = get_defoe_service()
+
+    GOOGLE_CLOUD_STORAGE = get_google_cloud_storage()
 
     ALLOWED_EXTENSIONS = {'txt', 'yaml', 'yml'}
+
+    SENDGRID_API_KEY = "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"
+    ADMIN_EMAIL = "damonyu97@gmail.com"
 
     # OpenAPI
     SWAGGER = {

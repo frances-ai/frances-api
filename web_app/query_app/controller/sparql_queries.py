@@ -1,6 +1,5 @@
 from SPARQLWrapper import SPARQLWrapper, JSON
-
-from ..resolver import get_kg_url
+from .utils import get_kg_url
 
 eb_url = get_kg_url('total_eb')
 
@@ -114,14 +113,16 @@ def get_editions():
     results = sparql.query().convert()
     clean_r = []
     for r in results["results"]["bindings"]:
+        edition_name = r["title"]["value"]
+        # Edition 0,1801 is the supplement to the third edition of the Encyclopaedia Britannica.
+        if "Edition 0,1801" == edition_name:
+            edition_name = "Sup. Edition 3, 1801"
+
         clean_r.append({
             "uri": r["e"]["value"],
-            "name": r["title"]["value"]
+            "name": edition_name
         })
-    clean_r.append({
-        "uri": 'https://w3id.org/eb/i/Edition/9910796343804340',
-        "name": 'Sup. Edition 3, 1801'
-    })
+
     return clean_r
 
 
@@ -234,10 +235,16 @@ def get_edition_details(uri=None):
     results = sparql.query().convert()
     clean_r = {}
     for r in results["results"]["bindings"]:
+        edition_title = r["title"]["value"]
+        # Edition 0,1801 is the supplement to the third edition of the Encyclopaedia Britannica.
+        if "Edition 0,1801" == edition_title:
+            edition_title = "Sup. Edition 3, 1801"
+
+        clean_r["title"] = edition_title
         clean_r["year"] = r["publicationYear"]["value"]
         clean_r["number"] = r["num"]["value"]
         clean_r["uri"] = uri
-        clean_r["title"] = r["title"]["value"]
+
         if "subtitle" in r:
             clean_r["subtitle"] = r["subtitle"]["value"]
         clean_r["printedAt"] = r["printedAt"]["value"]
