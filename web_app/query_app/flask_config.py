@@ -68,7 +68,7 @@ class DefaultFlaskConfig:
 
     ALLOWED_EXTENSIONS = {'txt', 'yaml', 'yml'}
 
-    SENDGRID_API_KEY = "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"
+    SENDGRID_API_KEY = "YOUR SENDGRID API KEY"
     ADMIN_EMAIL = "damonyu97@gmail.com"
 
     # OpenAPI
