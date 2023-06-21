@@ -33,5 +33,5 @@ python -m nltk.downloader all
 cp -R /root/nltk_data /usr/lib/.
 cp -R /root/nltk_data /usr/local/lib/.
 
-curl -o /home/defoe.zip https://storage.googleapis.com/frances2023/defoe.zip
+gcloud storage cp gs://frances2023/defoe.zip /home/defoe.zip
 unzip /home/defoe.zip -d /home

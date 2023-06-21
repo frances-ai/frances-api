@@ -1,210 +1,173 @@
-# frances
+# frances backend
 
-## Datasets
+This repository is the backend of  an improved version of [frances](https://github.com/francesNLP/frances/tree/main)
 
-The raw and postprocessed datasets can be found [here](https://drive.google.com/file/d/1naT2L5tFTngD7xSo7hhr7gn6yQS6RAVu/view?usp=sharing)
+This project contains a flask backend (this repository), [react frontend](https://github.com/frances-ai/frances-frontend), [defoe](https://github.com/frances-ai/defoe_lib)
 
-## 1. Extracting automatically Articles of the Encyclopaedia Britannica (EB) with defoe
+User can access frances here: [frances](http://35.228.63.82:3000)
 
-We have created a [new defoe query for extracting automatically articles](https://github.com/francesNLP/defoe/blob/master/defoe/nlsArticles/queries/write_articles_pages_df_yaml.py) from the EB. The articles are stored per edition in YAML files.  
-
-Here we have the command for running this query for extracting the articles of the first edition, assuming that we are located in the [defoe](https://github.com/francesNLP/defoe) directory. 
-
-```
-spark-submit --py-files defoe.zip defoe/run_query.py nls_first_edition.txt nlsArticles defoe.nlsArticles.queries.write_articles_pages_df_yaml queries/write_to_yml.yml -r frances/ results_NLS/results_eb_1_edition] -n 34 
-```
-
-Note that for running this query you need configuration file for specifying the operating system and the defoe path for the *long_s fix*:
-- [configuration_file](https://github.com/francesNLP/defoe/blob/master/queries/write_to_yml.yml)
-
-We have stored these data stored in [NLS_EB/results_NLS](https://github.com/francesNLP/frances/tree/main/NLS_EB/results_NLS)/results_eb_<1|2|3|4>_edition.
-
-We have **8 EB editions**, meaning that we have 8 extracted YAML files in total!! 
-
-## 2. Raw defoe Metadata from the EB Articles 
-
-Each YAML file has a row per article found within a page ([Example](https://github.com/francesNLP/frances/blob/main/NLS_EB/results_NLS/results_eb_1_edition)), with the following columns (being the most important **term** , **definition** and **type_page**):
- 
- - title: title of the book (e.g. Encyclopaedia Britannica)
- - edition: edition of the book (e.g Eighth edition, Volume 2, A-Anatomy)
- - year: year of publication/edition (e.g. 1853)
- - place: place (e.g. Edinburgh)      
- - archive_filename: directory path of the book (e.g. /home/rosa_filgueira_vicente/datasets/single_EB/193322698/)     
- - source_text_filename: directory Path of the page (e.g. alto/193403113.34.xml)
- - text_unit: unit that represent each ALTO XML. These could be Page or Issue. 
- - text_unit_id: id of the page (e.g. Page704)
- - num_text_unit: number of pages (e.g. 904)
- - type_archive: type of archive. Thse could be book or newspapers. 
- - model: defoe model used for ingesting this dataset (nlsArticles)
- - type_page: the page classification that has been done by defoe. These could be Topic, Articles, Mix or Full Page. 
- - header: the header of the page (e.g. AMERICA)
- - **term**: term that is going to be described (e.g. AMERICA)
- - **definition**: words describing an article / topic/ full page: ( e.g. “AMERICA. being inhabited. The Aleutian ….”)
- - num_articles: number of articles per page. In case a page has been classified as Topic or FullPage, the number of articles is 1.
- - num_page_words: number of words per page (e.g. 1373)
- - num_article_words: number of words of an article (e.g. 1362)
- - **type_page**: Type of Page. 
- 
-We have detected two types of articles with two different patterns at “page” level:
-  - **Short articles** (named as **articles**): Usually presented by a TERM in the main text in uppercase,  followed by a “,”  (e.g. ALARM, ) and then a DESCRIPTION of the TERM (similar to an entry in a dictionary). This description normally is one or two paragraphs, but of course there are exceptions.  	
-	- Term: ALARM
-	- Definition: in the Military Art, denotes either the apprehension of being suddenly attacked, or the notice thereof signified by firing a cannon, firelock, or the like. False alarms are frequently made use of to harass the enemy, by keeping them constantly under arms. , ….
- 
-- **Long articles** (named as **topics**): In this is the case, the Encyclopaedia introduces a TERM in the header of a page (which is not the case for the short articles), and then it normally uses several pages to describe that topic (and very often it uses a combination of text, pictures, tables, etc.). For example, the “topic” AMERICA goes from page 677 to 724 (47 pages!)
-
-
-We have also detected that some pages (e.g. Preface, FrontPage, List of Authors) do not contain articles nor topics. We classify those pages as "Full_Page". And we also have noticed that there are some pages that have a "Mix" of articles and topics - we classify those pages as "Mix".
-
-Therefore a page can be classified (this information is stored in **type_page**) as:
- - Article: If it has several short articles
- - Topic: If it has a topic
- - Mix: If it has a mix of Articles and Topics
- - Full_Page: If it hasnt have Articles nor Topics. 
-
- 
-Important: **Topic** is just the way we named the *long articles* that expands more than a page. It does not refer to “NLP topic”.
-
-
-## 3. Post-Processing the Articles from the EB 
-
-We have realised that those articles/topics need additional postprocess treatments before peforming futher analyses with them. For example, we need to merge articles and topics that are split across pages. We have also noticed that some pages have wrongly been classified as "Topic", since they should be classified as articles. And the first pages very often get confused as topics or articles - they should classified as "Full_Page". 
-
-Therefore, we have created [Merging_EB_Terms.ipynb](https://github.com/francesNLP/frances/blob/main/NLS_EB/Merging_EB_Terms.ipynb), a notebook that cleans each of the files obtained with defoe (applying different cleaning treatments). And it creates a new "clean" version of each them: [NLS_EB/results_NLS](https://github.com/francesNLP/frances/tree/main/NLS_EB/results_NLS)/results_eb_<1|2|3|4...>edition_updated. 
-
-Here we have an [example](https://github.com/francesNLP/frances/blob/main/NLS_EB/results_NLS/results_eb_1_edition_updated) of the results of the 1st edition cleaned. 
-
-
-Furthermore, this notebook also re-arranges the updated information (and drops some metada) to create a **NEW dataframe per file/edition**, with the following **METADATA/COLUMNS/PROPERTIES**:
-
-	
-- definition:           Definition of a term
-- editionNum:           1,2,3,4,5,6,7,8
-- editionTitle:         Title of the edition
-- header:               Header of the page's term                                  
-- place:                Place where the volume was edited (e.g. Edinburgh)                                    
-- relatedTerms:         Related terms (see X article)  
-- altoXML:              File Path of the XML file from which the term belongs       
-- term:                 Term name                            
-- positionPage:         Position of ther term in the page     
-- startsAt:             Number page in which the term definition starts 
-- endsAt:               Number page in which the term definition ends 
-- volumeTitle:          Title of the Volume
-- typeTerm:             Type of term [Topic| Articles]                                       
-- year:                 Year of the edition
-- volumeNum:            Volume number (e.g. 1)
-- letters:              leters of the volume (A-B)
-- part:                 Part of the volume (e.g 1)
-- supplementTitle:      Supplement's Title
-- supplementsTo:        It suppelements to editions [1, 2, 3....]
-- numberOfWords:        Number of words per term definition
-- numberOfTerms:        Number of terms per page
-- numberOfPages:        Number of pages per volume
-- numberOfVolumes:      Number of volumes per edition or supplement
-- similar_terms:        Applying Transformers - "all-mpnet-base-v2" - extract which terms are more similar to others.
-- topic_summaritzation : Applying Transformers - "XLNeT"- summarize an topic definition
-- sentiment_analysis:   Applying Transformers - "siebert/sentiment-roberta-large-english" - classify the definitions between positve and negative. 
-- spelling_checker :    Applying Transformers + neuspell - check the terms definitions and fix errors. 
-	
-We have a row per TERM. Note, that a TERM can appear several times per edition. That is the case when we have several definitions per term.
-
-``` EXAMPLE: ABACUS
-ABACUS - Definition: a table strewed over with dust or sand, upon which the ancient mathematicians drew their figures, It also signified a cupboard, or buffet.
 ---
-ABACUS - Definition: in architeflure, signifies the superior part or member of the capital of a column, and serves as a kind of crowning to both. It was originally intended to represent a square tile covering a basket. The form of the abacus is not the same in all orders: in the Tuscan, Doric, and Ionic, it‘is generally square; but in the Corinthian and Compofite, its four sides are arched ir Avards, and embellilhed in the middle withornament, as a rose or other flower, Scammozzi uses abacus for a concave moulding on the capital of the Tuscan pedefial; and Palladio calls the plinth above the echinus, or boultin, in the Tufean and Doric orders, by the same name. See plate I. fig. i. and
+
+## Local Development
+
+### Requirements
+* Python3.9
+* Docker
+* postgresql
+* jena fuseki
+* defoe
+
+### Get source code repository, models and knowledge graph files
+
+For the source code, run:
+
+```bash
+git clone https://github.com/frances-ai/frances-api
+```
+
+For the knowledge graphs, download from here: [knowledge graphs](https://universityofstandrews907-my.sharepoint.com/:f:/r/personal/ly40_st-andrews_ac_uk/Documents/knowledge_graphs?csf=1&web=1&e=1dXP1O)
+
+For the pre-computed NLP results, embedding and models, download from here: [models](https://universityofstandrews907-my.sharepoint.com/:f:/g/personal/ly40_st-andrews_ac_uk/Eq-ex5z-9atOvjw1LuFri6wBIu8TdW7uLVK-QXgAu2GJQg?e=hHPhGq)
+
+### Install Python3.9
+
+See instruction here: [python3.9 install](https://www.python.org/downloads/)
+
+### Install dependencies
+In the `frances-api` directory, run
+```bash
+pip install -r webb_app/requirements.txt
+```
+
+### Run defoe grpc server
+
+see instructions here: [defoe](https://github.com/frances-ai/defoe_lib/blob/main/docs/setup-local.md)
+
+### Install Docker, run postgresql and fuseki using docker
+
+see instructions here: [docker](https://docs.docker.com/engine/install/)
+ 
+start postgresql database and fuseki server using docker compose. In the `frances-api` directory, run
+```bash
+docker compose -f docker-compose.dev.yml up
+```
+
+### Upload knowledge graphs and start the backend
+In the `frances-api` directory, run
+```bash
+sh start.sh
+```
+
+
 ---
-ABACUS - Definition: is also the name of an ancient instrument for facilitating operations in arithmetic. It is vadoully contrived. That chiefly used in Europe is made by drawing any number of parallel lines at the di(lance of two diameters of one of the counters used in the calculation. A counter placed on.the lowed line, signifies r; on the sd, 10; on the 3d, 100; on the 4th, 1000, &c. In the intermediate spaces, the same counters are eflimated at one Jialf of the value of the line immediately superior, viz. between the id and 2d, 5; between the 2d and 3d, 50, &c. See plate I. fig. 2. A B, where the same number, 1768 for example, is represented under both by different dispositions of the counters.
+
+## Running defoe in [Dataproc](https://cloud.google.com/dataproc/docs) cluster
+
+In addition to running defoe locally using defoe grpc server, you can also connect to your dataproc clusters to run defoe queries in frances.
+
+### Set up defoe dataproc cluster
+ We have designed dataproc initialization action scripts to automatically setup defoe running environment.
+You can find these scripts in the directory: `frances-api/web_app/google_cloud/cloud_storage_init_files/init`.
+
+Before creating the cluster, several files are required to upload to google cloud storage bucket.
+#### Upload files to google cloud storage
+1. [Creat a bucket](https://cloud.google.com/storage/docs/creating-buckets)
+2. Create defoe.zip file from [defoe](https://github.com/frances-ai/defoe_lib). In the `defoe_lib` directory, run:
+    ```bash
+    zip -r defoe.zip defoe
+    ```
+3. Update the init scripts (line 36) :
+    ```bash
+   gcloud storage cp gs://<your bucket name>/defoe.zip /home/defoe.zip
+   ```
+4. [Upload files to the bucket](https://cloud.google.com/storage/docs/uploading-objects#upload-object-console). The required files are:
+   * updated cluster init folder: `frances-api/web_app/google_cloud/cloud_storage_init_files/init`.
+   * defoe.zip in step 2
+   * run_query.py in [defoe](https://github.com/frances-ai/defoe_lib): `defoe_lib/run_query.py`
+   * precomputedResult folder: `frances-api/web_app/query_app/precomputedResult`.
+   
+#### Creat the dataproc cluster using init scripts
+see instructions here: [dataproc initialization actions](https://cloud.google.com/dataproc/docs/concepts/configuring-clusters/init-actions)
+
+#### Public fuseki server
+Since defoe requires fuseki server to query knowledge graphs, we need to make it accessible to the cloud cluster.
+You can follow the instruction on local development part for [fuseki install](#install-docker-run-postgresql-and-fuseki-using-docker). But here, you apply it in a cloud VM. 
+Note that, you should make the fuseki accessible to the cluster by opening the port in firewall rule settings.
+
+
+### Run frances locally with defoe dataproc cluster
+
+We have built a dataproc_defoe_service to adopt the defoe dataproc cluster.
+All you need to do is change the `MODE` in `frances-api/web_app/query_app/resolver.py`:
+
+```python
+# In line 25 of resolver.py
+kg_base_url = "your fuseki server url"
+
+# In line 30 of resolver.py
+MODE = "gs"
+
+# From line 68 - 76 of resolver.py
+MAIN_PYTHON_FILE_URI = "gs://<your bucket name>/run_query.py"
+PYTHON_FILE_URIS = ["file:///home/defoe.zip"]
+PROJECT_ID = "<your project id>"
+BUCKET_NAME = "<your bucket name>"
+DEFAULT_CLUSTER = {
+    "cluster_name": "<your cluster name>",
+    "project_id": PROJECT_ID,
+    "region": "<your cluster region>"
+}
+
+```
+Since it uses google client library to access dataproc and cloud storage, you need to Set up Application Default Credentials in local environment
+See the instructions here: https://cloud.google.com/docs/authentication/provide-credentials-adc#local-dev
+
+After this, you can run this backend similar to above [local development process](#local-development), except you don't need to run defoe grpc server and local fuseki server. 
+
 ---
-ABACUS - Definition: logijlicus, a right-angled triangle, whose sides forming the right angle contain the numbers from 1 to 60, and its area the fafta of every two of the numbers perpendicularly opposite. This is also called a canon Jk^&cus Pythagvricus, the multiplication-table, or any table of numbers that facilitates operations in arith-
----
-```
-**THESE METADATA/COLUMNS/PROPERTIES ARE THE ONES THAT WE ARE GOING TO USE FROM NOW ON**
 
-**VERY IMPORTANT**
-These dataframes are stored as JSON files (using orient="index") in [NLS_EB/results_NLS/](https://github.com/francesNLP/frances/tree/main/NLS_EB/results_NLS)results_eb_[1|2|3|4 ...]edition<1|2|3|4...>_postprocess_dataframe. [Example](https://github.com/francesNLP/frances/blob/main/NLS_EB/results_NLS/results_eb_1_edition_postprocess_dataframe). See bellow the comand that we used for storing the dataframe corresponding to the 1st Edition. 
+## Cloud Deployment
 
-```
-df.to_json(r'./results_NLS/results_eb_1_edition_postprocess_dataframe', orient="index") 
+### Build docker image for backend:
+Update the `frances-api/install_graph.sh`:
+```bash
+fuseki_url="http://fuseki:3030"
 ```
 
-## 4. Extracting all the information (until volume level) from the EB
-
-
-We have also improved our query for extracting all the metadata from the all the editions, supplements and volumes from EB.
-In this case, we do not enter to extract the metadata at article level.
-
+This image will also automatically upload knowledge graphs. To support multiple architectures, run the following command in `frances-api` directory to build the image:
+```bash
+docker buildx build --platform <linux/arm/v7,linux/arm64/v8,>linux/amd64 --tag <docker username>/frances-api:latest --push .
 ```
-spark-submit --py-files defoe.zip defoe/run_query.py nls_first_edition.txt nls defoe.nls.queries.metadata_yaml  -r frances/ results_NLS/eb_metadata_details.txt -n 34 
+You can choose which architectures (linux/arm/v7, linux/arm64/v8, linux/amd64) to support.
+
+### Build docker image for frontend:
+[Setup frontend](https://github.com/frances-ai/frances-frontend)
+
+Run the following command in `frances-frontend` directory to build the image:
+```bash
+docker buildx build --platform <linux/arm/v7,linux/arm64/v8,>linux/amd64 --tag <docker username>/frances-front:latest --push .
 ```
 
-[EB Metadata Jupyter](https://github.com/francesNLP/frances/blob/main/NLS_EB/Metadata_EB.ipynb)
+### Set up Application Default Credentials in the cloud vm
 
-propierties extracted: 
+See the instructions here: https://cloud.google.com/docs/authentication/provide-credentials-adc#local-dev
 
-- MMSID: Metadata Management System ID
-- editionTitle:        Title of the edition
-- editionSubTilte:     Subtitle of the edition
-- editor:              Editor (person) of an edition or a supplement
-- termsOfAddress:      Terms of Address of the editor (e.g. Sir)
-- editor_date: Year of Birth - Year of Death
-- genre:        genre of the editions
-- language:     language used to write the volumes
-- numberOfPages: number of pages of a volume
-- physicalDescription: physical description of a edition
-- place: place printed of a edition or a supplement
-- publisher: publisher (organization or person) of an edition
-- referencedBy: books which reference an edition
-- shelfLocator: shelf locator of an edition
-- subTitle: subtitle of an edition
-- volumeTitle: title of a volume
-- year: year of print
-- volumeId: volume identifier
-- metsXML: XML mets file
-- permanentURL: URL of a volume
-- publisherPersons: list of publishers which are persons
-- volumeNum: Number of a volume
-- letters: Letters of a volume
-- part: Part of a volume
-- editionNum: Number of an editior
-- supplementTitle: Supplement subTitle
-- supplementsTo: List of editions which a supplement supplements to
-- numberOfVolumes: Number of volumes per edition or supplement
+If your Cloud VM has gcloud CLI installed (pre-installed in all Google Cloud VM), just run the following command:
+```
+gcloud auth application-default login
+```
 
-<img width="634" alt="Screen Shot 2021-10-18 at 18 47 16" src="https://user-images.githubusercontent.com/6940078/137781600-f81433d7-d60e-425c-a40f-b8c9a4261b0c.png">
+### Run all the services using docker compose
+
+1. Update the `docker-compose.prod.yml` based on your cloud configuration.
+2. Upload the `docker-compose.prod.yml` file to the cloud VM.
+3. Run all services using the following command (in the same directory with uploaded docker compose file):
+   ```
+   sudo docker compose -f docker-compose.local.yml up
+   ```
 
 
-## 5. Questions
-
-Here a list of questions that we want to ask to these data (using the EB_Articles Clean Metadata):
-
-(Remember, a term can have more than one definition per edition)
-
-- Give me all the volumes that we have per edition
-- Given an edition, give me the years that each volume has been published.
-- Given an edition and a volume, give me all the terms
-- Given an edition, give me all the terms
-- Given a term, give me all editions and volumes that it appears. 
-- Given a term, give me all the definitions that we have per edition. 
-- Give the terms that only appear in one edition.
-- Give the terms that appears in all editions. 
-- Given an edition, tell me the terms for which we have more definitions
-- Search definitions for a given term and edition. 
-- Given a term and edition, tell me which terms (based on "related_terms") are related with it. 
-- Given a term, see how the definition(s) have changed across editions. 
-
-## 6. EB-Ontology
-
-<img width="641" alt="eb-dataModel" src="https://user-images.githubusercontent.com/6940078/138864341-e18e5f0e-3038-4392-9bc9-3340875c5730.png">
 
 
-## EB-Knowlege Graph
 
-Example 1: 
-<img width="1183" alt="Screen Shot 2022-01-14 at 13 10 21" src="https://user-images.githubusercontent.com/6940078/149520575-8718724b-c83f-4160-b1a3-a1890723cb54.png">
-
-Example 2:
-
-<img width="1166" alt="Screen Shot 2022-01-14 at 13 11 32" src="https://user-images.githubusercontent.com/6940078/149520648-e6c916c5-997a-44e8-bff0-b5be41caac0e.png">
-
-## 7. Frances Architecture
-<img width="1195" alt="Screen Shot 2022-01-14 at 11 57 12" src="https://user-images.githubusercontent.com/6940078/149520225-752e2f4d-a5dc-4184-ad78-2eae09a5dd3f.png">
 
