@@ -27,7 +27,7 @@ kg_base_url = "http://35.228.63.82:3030/"
 if os.getenv("KG_BASE_URL"):
     kg_base_url = os.getenv("KG_BASE_URL")
 
-MODEL = "local"
+MODEL = "gs"
 
 
 def get_front_env():
@@ -59,7 +59,7 @@ def get_database():
         "user": DATABASE_USER,
         "password": DATABASE_PASSWORD
     }
-    if MODEL != "local":
+    if MODEL == "deploy":
         database_config["host"] = "database"
     database = Database(database_config)
     return database
@@ -74,6 +74,14 @@ DEFAULT_CLUSTER = {
     "project_id": PROJECT_ID,
     "region": "us-central1"
 }
+
+
+def get_file_storage_mode():
+    file_model = MODEL
+    if MODEL == "deploy":
+        file_model = "gs"
+
+    return file_model
 
 
 def get_cluster():
@@ -92,7 +100,7 @@ def get_defoe_service():
     global defoe_service
     if defoe_service is not None:
         return defoe_service
-    if MODEL == "dataproc":
+    if MODEL == "gs" or MODEL == "deploy":
         defoe_service = DataprocDefoeService(MAIN_PYTHON_FILE_URI, PYTHON_FILE_URIS, get_cluster())
     elif MODEL == "local":
         defoe_service = LocalDefoeService(channel=LOCAL_DEFOE_GRPC_CHANNEL)
