@@ -1,6 +1,5 @@
 from SPARQLWrapper import SPARQLWrapper, JSON
-
-from ..resolver import get_kg_url
+from .utils import get_kg_url
 
 eb_url = get_kg_url('total_eb')
 

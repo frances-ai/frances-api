@@ -6,9 +6,11 @@ from os.path import dirname, abspath, join
 from flask import Blueprint, jsonify, request, send_file
 
 from .sparql_queries import *
-from ..resolver import get_kg_type, get_files
+from web_app.query_app.flask_config import DefaultFlaskConfig
+from .utils import get_kg_type
 
 collection = Blueprint("collection", __name__, url_prefix="/api/v1/collection")
+image_path = DefaultFlaskConfig.IMAGES_FOLDER
 
 
 @collection.get("/list")
@@ -34,7 +36,7 @@ def get_collections_json():
 @collection.get("/image")
 def get_collection_image():
     image_name = request.args.get("name")
-    image_file_path = os.path.join(get_files().images_path, "collections", image_name)
+    image_file_path = os.path.join(image_path, "collections", image_name)
     return send_file(image_file_path, mimetype="image/jpeg")
 
 

@@ -1,22 +1,28 @@
-from tqdm import tqdm
 from sklearn.metrics.pairwise import cosine_similarity
 import pickle
 import os, yaml
 from .defoe_query_utils import preprocess_word, parse_preprocess_word_type
+from web_app.query_app.flask_config import DefaultFlaskConfig
 
-#### Matplotlib plots
 import matplotlib.pyplot as plt
 from io import BytesIO
 import base64
 
-### Plotly plots
-import chart_studio.plotly as py
-import plotly.figure_factory as ff
 import pandas as pd
 import plotly.express as px
 
 import numpy as np
 import json
+
+
+def get_kg_type(collection):
+    return DefaultFlaskConfig.KG_TYPES_MAP[collection]
+
+
+def get_kg_url(kg_type):
+    kg_base_url = DefaultFlaskConfig.KG_BASE_URL
+    return kg_base_url + kg_type + "/sparql"
+
 
 ###
 def load_data(input_path_embed, file_name):
@@ -84,14 +90,18 @@ def preprocess_lexicon(data_file, preprocess="normalize"):
             keysentences.append(sentence_norm)
     return keysentences
 
+
 def dict_defoe_queries():
     defoe_q={}
     defoe_q["frequency_keysearch_by_year"]="frequency_keysearch_by_year"
     defoe_q["publication_normalized"]="publication_normalized"
     defoe_q["uris_keysearch"]="uris_keysearch"
-    defoe_q["terms_snippet_keysearch_by_year"]="terms_snippet_keysearch_by_year"
-    defoe_q["terms_fulltext_keysearch_by_year"]="terms_fulltext_keysearch_by_year"
+    defoe_q["snippet_keysearch_by_year"]="snippet_keysearch_by_year"
+    defoe_q["fulltext_keysearch_by_year"]="fulltext_keysearch_by_year"
     defoe_q["geoparser_by_year"] = "geoparser_by_year"
+    defoe_q["frequency-distribution"] = "frequency-distribution"
+    defoe_q["lexicon-diversity"] = "lexicon-diversity"
+    defoe_q["person_entity_recognition"] = "person_entity_recognition"
     return defoe_q
 
 

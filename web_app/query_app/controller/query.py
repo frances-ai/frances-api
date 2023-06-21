@@ -5,13 +5,11 @@ from flask_jwt_extended import jwt_required, get_jwt_identity
 from flask_paginate import Pagination
 from http import HTTPStatus
 
-from google.cloud.dataproc_v1 import JobStatus
-
 from .sparql_queries import *
 from itertools import islice
 
 from .utils import calculating_similarity_text, get_topic_name, retrieving_similariy
-from .utils import plot_taxonomy_freq, preprocess_lexicon, dict_defoe_queries, read_results
+from .utils import dict_defoe_queries, read_results, get_kg_type, get_kg_url
 from .utils import pagination_to_dict, sanitize_results, figure_to_dict
 
 import time, os, yaml
@@ -21,23 +19,26 @@ from operator import itemgetter
 from werkzeug.utils import secure_filename
 
 from ..core import limiter
-from ..defoe_service import DefoeService
-from ..resolver import get_models, get_files, get_database, get_kg_type, get_defoe_service, get_google_cloud_storage
 from flasgger import swag_from
 
 from ..db import DefoeQueryConfig, DefoeQueryTask
+from web_app.query_app.flask_config import DefaultFlaskConfig
+from .models import ModelsRepository
 
 query = Blueprint("query", __name__, url_prefix="/api/v1/query")
 query_protected = Blueprint("query_protected", __name__, url_prefix="/api/v1/protected/query")
-models = get_models()
-files = get_files()
-database = get_database()
+database = DefaultFlaskConfig.DATABASE
+models = ModelsRepository
+defoe_service = DefaultFlaskConfig.DEFOE_SERVICE
+upload_folder = DefaultFlaskConfig.UPLOAD_FOLDER
+result_folder = DefaultFlaskConfig.RESULTS_FOLDER
+google_cloud_storage = DefaultFlaskConfig.GOOGLE_CLOUD_STORAGE
 
 
 @query.route("/term_search/<string:termlink>", methods=['GET'])
 @query.route("/term_search", methods=['POST'])
 @swag_from("../docs/query/term_search.yml")
-@limiter.limit("5/minute")  # 5 requests per minute
+@limiter.limit("30/minute")  # 30 requests per minute
 def term_search(termlink=None):
     if request.method == "POST":
         term = request.json.get("search")
@@ -109,6 +110,7 @@ def term_search(termlink=None):
 
 @query.route("/visualization_resources", methods=['POST'])
 @swag_from("../docs/query/visualization_resources.yml")
+@limiter.limit("30/minute")  # 30 requests per minute
 def visualization_resources():
     if 'resource_uri' in request.json and 'collection' in request.json:
         uri_raw = request.json.get('resource_uri').strip().replace("<", "").replace(">", "")
@@ -132,7 +134,7 @@ def visualization_resources():
 
 @query.route("/similar_terms", methods=["GET", "POST"])
 @swag_from("../docs/query/similar_terms.yml")
-@limiter.limit("3/minute")  # 3 requests per minute
+@limiter.limit("30/minute")  # 30 requests per minute
 def similar_terms(termlink=None):
     uri = ""
     uri_raw = ""
@@ -282,7 +284,7 @@ def similar_terms(termlink=None):
 
 @query.route("/topic_modelling", methods=["GET", "POST"])
 @swag_from("../docs/query/topic_modelling.yml")
-@limiter.limit("5/minute")  # 5 requests per minute
+@limiter.limit("30/minute")  # 30 requests per minute
 def topic_modelling(topic_name=None):
     topic_name = request.args.get('topic_name', None)
     num_topics = len(models.t_names) - 2
@@ -352,7 +354,7 @@ def topic_modelling(topic_name=None):
 
 @query.route("/spelling_checker", methods=["GET", "POST"])
 @swag_from("../docs/query/spelling_checker.yml")
-@limiter.limit("5/minute")  # 5 requests per minute
+@limiter.limit("30/minute")  # 30 requests per minute
 def spelling_checker(termlink=None):
     uri_raw = ""
     uri = ""
@@ -511,6 +513,49 @@ def evolution_of_terms(termlink=None):
     }), HTTPStatus.OK
 
 
+def create_defoe_query_config(kg_type, preprocess, hit_count, data_file,
+                              target_sentences, target_filter, start_year, end_year,
+                              window, gazetteer, bounding_box):
+    config = {}
+    if kg_type:
+        config["kg_type"] = kg_type
+
+    if preprocess:
+        config["preprocess"] = preprocess
+
+    if hit_count:
+        config["hit_count"] = hit_count
+
+    if data_file:
+        config["data"] = data_file
+
+    if target_sentences:
+        config["target_sentences"] = target_sentences
+
+    if target_filter:
+        config["target_filter"] = target_filter
+
+    if start_year:
+        # start_year from request is integer, while defoe need string
+        config["start_year"] = str(start_year)
+
+    if end_year:
+        # end_year from request is integer, while defoe need string
+        config["end_year"] = str(end_year)
+
+    if window:
+        # end_year from request is integer, while defoe need string
+        config["window"] = str(window)
+
+    if gazetteer:
+        config["gazetteer"] = gazetteer
+
+    if bounding_box:
+        config["bounding_box"] = bounding_box
+
+    return config
+
+
 @query_protected.route("/defoe_submit", methods=["POST"])
 @swag_from("../docs/query/defoe_submit.yml")
 @jwt_required()
@@ -521,62 +566,54 @@ def defoe_queries():
     defoe_selection = request.json.get('defoe_selection')
 
     # build defoe config from request
-    config = {}
-    config["preprocess"] = request.json.get('preprocess')
+    preprocess = request.json.get('preprocess')
     target_sentences = request.json.get('target_sentences')
-    config["target_sentences"] = target_sentences
-    config["target_filter"] = request.json.get('target_filter')
+    target_filter = request.json.get('target_filter')
     start_year = request.json.get('start_year')
     end_year = request.json.get('end_year')
-    config["hit_count"] = request.json.get('hit_count')
+    hit_count = request.json.get('hit_count')
     lexicon_file = request.json.get('file', '')
-    config["data"] = os.path.join(files.uploads_path, user_id, lexicon_file)
+    data_file = os.path.join(upload_folder, user_id, lexicon_file)
 
     # For geoparser_by_year query, add bounding_box and gazetteer
-    config["bounding_box"] = request.json.get('bounding_box')
-    config["gazetteer"] = request.json.get('gazetteer')
-
-    if start_year is not None:
-        config['start_year'] = str(start_year)
-
-    if end_year is not None:
-        config['end_year'] = str(end_year)
-
+    bounding_box = request.json.get('bounding_box')
+    gazetteer = request.json.get('gazetteer')
     collection = request.json.get('collection', 'Encyclopaedia Britannica')
 
-    config['kg_type'] = get_kg_type(collection)
+    kg_type = get_kg_type(collection)
 
     # For terms_snippet_keysearch_by_year query, add window
     window = request.json.get('window')
-    config['window'] = str(window)
-
-    # TODO validate config data
 
     # Save config data to database
-    defoe_query_config = DefoeQueryConfig.create_new(collection, defoe_selection, config["preprocess"], lexicon_file,
-                                                     target_sentences, config["target_filter"],
-                                                     start_year, end_year, config["hit_count"],
-                                                     window, config["gazetteer"], config["bounding_box"])
+    defoe_query_config = DefoeQueryConfig.create_new(collection, defoe_selection, preprocess, lexicon_file,
+                                                     target_sentences, target_filter,
+                                                     start_year, end_year, hit_count,
+                                                     window, gazetteer, bounding_box)
     database.add_defoe_query_config(defoe_query_config)
 
     # Save defoe query task information to database
 
     query_task = DefoeQueryTask.create_new(user_id, defoe_query_config, "", "")
-    result_file_path = os.path.join(files.results_path, user_id, str(query_task.id) + ".yml")
+    result_file_path = os.path.join(result_folder, user_id, str(query_task.id) + ".yml")
 
-    if (config['kg_type'] + '_' + defoe_selection) in DefoeService.get_pre_computed_queries():
-        result_file_path = DefoeService.get_pre_computed_queries()[config['kg_type'] + '_' + defoe_selection]
+    if (kg_type + '_' + defoe_selection) in defoe_service.get_pre_computed_queries():
+        result_file_path = defoe_service.get_pre_computed_queries()[kg_type + '_' + defoe_selection]
 
     query_task.resultFile = result_file_path
-    print(query_task.resultFile)
+
+    # create query_config for defoe query
+    config = create_defoe_query_config(kg_type, preprocess, hit_count, data_file,
+                                       target_sentences, target_filter, start_year, end_year, window,
+                                       gazetteer, bounding_box)
 
     try:
         # Submit defoe query task
-        get_defoe_service().submit_job(
+        defoe_service.submit_job(
             job_id=str(query_task.id),
             model_name="sparql",
             query_name=defoe_selection,
-            endpoint=get_kg_url(config["kg_type"]),
+            endpoint=get_kg_url(kg_type),
             query_config=config,
             result_file_path=result_file_path
         )
@@ -615,7 +652,7 @@ def cancel_defoe_query():
         })
 
     try:
-        get_defoe_service().cancel_job(task_id)
+        defoe_service.cancel_job(task_id)
         return jsonify({
             "success": True
         })
@@ -632,7 +669,7 @@ def cancel_defoe_query():
 @limiter.limit("2/second")  # 2 requests per second
 def upload():
     user_id = get_jwt_identity()
-    user_folder = os.path.join(files.uploads_path, user_id)
+    user_folder = os.path.join(upload_folder, user_id)
     # Make directories relative to the working folder
     os.makedirs(user_folder, exist_ok=True)
     file = request.files['file']
@@ -641,9 +678,11 @@ def upload():
     source_file_path = os.path.join(user_folder, save_name)
     print(source_file_path)
     file.save(source_file_path)
-    # Upload it to Google Cloud Storage
-    # It will look from the relative path from the working folder
-    get_google_cloud_storage().upload_blob_from_filename(source_file_path, source_file_path)
+
+    if current_app.config["FILE_STORAGE_MODE"] == "gs":
+        # Upload it to Google Cloud Storage
+        # It will look from the relative path from the working folder
+        google_cloud_storage.upload_blob_from_filename(source_file_path, source_file_path)
 
     return jsonify({
         "success": True,
@@ -699,32 +738,31 @@ def defoe_status():
 
         # When query job is not done
 
-        status = get_defoe_service().get_status(task_id)
+        status = defoe_service.get_status(task_id)
         state = status["state"]
-        state_str = DefoeService.state_to_str(state)
         output = {
             "id": task_id,
         }
 
-        if state == JobStatus.State.DONE:
+        if state == "DONE":
             task.progress = 100
             output["results"] = task.resultFile
 
-        elif state == JobStatus.State.SETUP_DONE:
+        elif state == "SETUP_DONE":
             task.progress = 5
 
-        elif state == JobStatus.State.RUNNING:
+        elif state == "RUNNING":
             task.progress = 10
 
-        elif state == JobStatus.State.ERROR:
+        elif state == "ERROR":
             task.progress = 100
             output["error"] = status["details"]
 
-        elif state == JobStatus.State.CANCELLED:
+        elif state == "CANCELLED":
             task.progress = 100
 
-        if state_str != task.state:
-            task.state = state_str
+        if state != task.state:
+            task.state = state
             database.update_defoe_query_task(task)
 
         output["state"] = task.state
@@ -741,6 +779,7 @@ def defoe_status():
 
 @query_protected.route("/defoe_query_task", methods=['POST'])
 @jwt_required()
+@limiter.limit("30/second")  # 30 requests per second
 def defoe_query_task():
     user_id = get_jwt_identity()
     task_id = request.json.get('task_id')
@@ -757,31 +796,59 @@ def defoe_query_task():
             query_info = kg_type + "_publication_normalized"
             return jsonify({
                 "task": task.to_dict(),
-                "publication_normalized_result_path": DefoeService.get_pre_computed_queries()[query_info]
+                "publication_normalized_result_path": defoe_service.get_pre_computed_queries()[query_info]
             }), HTTPStatus.OK
         return jsonify({
             "task": task.to_dict()
         }), HTTPStatus.OK
 
 
+def result_filename_to_absolute_filepath(result_filename, user_id):
+    if "precomputedResult" in result_filename:
+        base_dir = str(current_app.config['BASE_DIR'])
+        print(base_dir)
+        print(os.path.join(base_dir, result_filename))
+        return os.path.join(base_dir, result_filename)
+    return os.path.join(result_folder, user_id, result_filename)
+
+
 @query_protected.route("/defoe_query_result", methods=['POST'])
 @jwt_required()
+@limiter.limit("30/second")  # 30 requests per second
 def defoe_query_result():
     user_id = get_jwt_identity()
     result_filename = request.json.get('result_filename')
+    if current_app.config["FILE_STORAGE_MODE"] == "gs":
+        # Validate file path
+        # If the file exists
+        # TODO If the file is accessible to this user
+        # Convert result to object
+        results = google_cloud_storage.read_results(result_filename)
+        return jsonify({
+            "results": results
+        })
 
-    # Validate file path
-    # If the file exists
-    # TODO If the file is accessible to this user
-    # Convert result to object
-    results = get_google_cloud_storage().read_results(result_filename)
-    return jsonify({
-        "results": results
-    })
+    if current_app.config["FILE_STORAGE_MODE"] == "local":
+        result_filepath = result_filename_to_absolute_filepath(result_filename, user_id)
+        print(result_filepath)
+        # Validate file path
+        # If the file exists
+        if result_filepath is not None and not os.path.isfile(result_filepath):
+            print("file does not exist!")
+            return jsonify({
+                "error": 'File does not exist!'
+            }), HTTPStatus.BAD_REQUEST
+        # TODO If the file is accessible to this user
+        # Convert result to object
+        results = read_results(result_filepath)
+        return jsonify({
+            "results": results
+        })
 
 
 @query_protected.route("/defoe_query_tasks", methods=['POST'])
 @jwt_required()
+@limiter.limit("30/second")  # 30 requests per second
 def defoe_query_tasks():
     user_id = get_jwt_identity()
     print('query')
@@ -795,20 +862,31 @@ def defoe_query_tasks():
 
 @query_protected.route("/download", methods=['POST'])
 @jwt_required()
+@limiter.limit("30/second")  # 30 requests per second
 def download():
     user_id = get_jwt_identity()
     result_filename = request.json.get('result_filename', None)
     print(result_filename)
-    zip_file_path = result_filename[:-3] + "zip"
-    result_user_folder = os.path.dirname(result_filename)
-    print(result_user_folder)
-    # Make directories relative to the working folder
-    os.makedirs(result_user_folder, exist_ok=True)
-    print(os.path.basename(result_filename))
-    # It will download file to result_filename, which tells the relative path from the working folder
-    get_google_cloud_storage().download_blob_from_filename(result_filename, result_filename)
-    with ZipFile(zip_file_path, 'w', ZIP_DEFLATED) as zipf:
-        zipf.write(result_filename, arcname=os.path.basename(result_filename))
 
+    result_file_path = result_filename_to_absolute_filepath(result_filename, user_id)
+    print(result_file_path)
+    zip_file_path = result_file_path[:-3] + "zip"
+
+    if current_app.config["FILE_STORAGE_MODE"] == "gs":
+        zip_file_path = result_filename[:-3] + "zip"
+        result_user_folder = os.path.dirname(result_filename)
+        print(result_user_folder)
+        # Make directories relative to the working folder
+        os.makedirs(result_user_folder, exist_ok=True)
+        print(os.path.basename(result_filename))
+
+        # It will download file to result_filename, which tells the relative path from the working folder
+        google_cloud_storage.download_blob_from_filename(result_filename, result_filename)
+        with ZipFile(zip_file_path, 'w', ZIP_DEFLATED) as zipf:
+            zipf.write(result_filename, arcname=os.path.basename(result_filename))
+    elif current_app.config["FILE_STORAGE_MODE"] == "local":
+        print(zip_file_path)
+        with ZipFile(zip_file_path, 'w', ZIP_DEFLATED) as zipf:
+            zipf.write(result_file_path, arcname=os.path.basename(result_file_path))
     # send_file function will look for the absolute path of a file.
     return send_file(os.path.abspath(zip_file_path), as_attachment=True)

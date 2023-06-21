@@ -1,4 +1,6 @@
-from google.cloud import dataproc
+import random
+
+from google.cloud import dataproc, storage
 from google.cloud.dataproc_v1 import JobStatus
 
 
@@ -10,7 +12,14 @@ def query_config_to_args(query_config):
     return args
 
 
-class DefoeService:
+def generate_bucket_name():
+    prefix = "frances"
+    number = random.randint(1000, 9999)
+    bucket_name = f"{prefix}{number}"
+    return bucket_name
+
+
+class DataprocDefoeService:
     preComputedJobID = []
 
     @staticmethod
@@ -20,9 +29,9 @@ class DefoeService:
             "chapbooks_scotland_publication_normalized": "precomputedResult"
                                                          "/chapbooks_scotland_publication_normalized.yml",
             "gazetteers_scotland_publication_normalized": "precomputedResult"
-                                                         "/gazetteers_scotland_publication_normalized.yml",
+                                                          "/gazetteers_scotland_publication_normalized.yml",
             "ladies_publication_normalized": "precomputedResult"
-                                                         "/ladies_publication_normalized.yml",
+                                             "/ladies_publication_normalized.yml",
         }
 
     @staticmethod
@@ -48,10 +57,32 @@ class DefoeService:
         self.job_client = dataproc.JobControllerClient(
             client_options={"api_endpoint": "{}-dataproc.googleapis.com:443".format(self.cluster["region"])}
         )
+        self.storage_client = storage.Client(project=self.cluster["project_id"])
+
+    def init_cloud_storage(self):
+        # create a bucket with a name which has not been taken.
+        created = False
+        bucket_name = "frances"
+        while created is False:
+            print("trying {}".format(bucket_name))
+            try:
+                bucket = self.storage_client.bucket(bucket_name)
+                new_bucket = self.storage_client.create_bucket(bucket)
+                created = True
+            except Exception as e:
+                print(type(e))
+                bucket_name = generate_bucket_name()
+
+        print(
+            "Created bucket {} in {} with storage class {}".format(
+                new_bucket.name, new_bucket.location, new_bucket.storage_class
+            )
+        )
+        return new_bucket
 
     def submit_job(self, job_id, model_name, query_name, endpoint, query_config, result_file_path):
-        if (query_config['kg_type'] + '_' + query_name) in DefoeService.get_pre_computed_queries():
-            DefoeService.preComputedJobID.append(job_id)
+        if (query_config['kg_type'] + '_' + query_name) in DataprocDefoeService.get_pre_computed_queries():
+            DataprocDefoeService.preComputedJobID.append(job_id)
             return job_id
 
         config_args = query_config_to_args(query_config)
@@ -70,9 +101,9 @@ class DefoeService:
                 "args": args,
                 "properties": {
                     "spark.executor.cores": "8",
-                    "spark.executor.instances": "34",
+                    "spark.executor.instances": "36",
                     "spark.dynamicAllocation.enabled": "false",
-                    "spark.cores.max": "272"
+                    "spark.cores.max": "144"
                 }
             },
         }
@@ -89,10 +120,10 @@ class DefoeService:
             raise Exception(E)
 
     def get_status(self, job_id):
-        if job_id in DefoeService.preComputedJobID:
-            DefoeService.preComputedJobID.remove(job_id)
+        if job_id in DataprocDefoeService.preComputedJobID:
+            DataprocDefoeService.preComputedJobID.remove(job_id)
             return {
-                "state": JobStatus.State.DONE
+                "state": "DONE"
             }
 
         job = self.job_client.get_job(
@@ -101,12 +132,12 @@ class DefoeService:
 
         if job.status.details:
             return {
-                "state": job.status.state,
+                "state": DataprocDefoeService.state_to_str(job.status.state),
                 "details": job.status.details
             }
 
         return {
-            "state": job.status.state
+            "state": DataprocDefoeService.state_to_str(job.status.state)
         }
 
     def cancel_job(self, job_id):
@@ -120,25 +151,30 @@ class DefoeService:
 
 if __name__ == "__main__":
     main_python_file_uri = "gs://frances2023/run_query.py"
-    python_file_uris = ["gs://frances2023/defoe.zip"]
+    python_file_uris = ["file:///home/defoe.zip"]
     cluster = {
         "cluster_name": "cluster-8753",
         "project_id": "frances-365422",
         "region": "us-central1"
     }
-    service = DefoeService(main_python_file_uri, python_file_uris, cluster)
+    service = DataprocDefoeService(main_python_file_uri, python_file_uris, cluster)
 
     model_name = "sparql"
-    query_name = "publication_normalized"
-    endpoint = "http://35.228.63.82:3030/ladies/sparql"
+    query_name = "frequency_keysearch_by_year"
+    endpoint = "http://35.228.63.82:3030/total_eb/sparql"
     query_config = {
-        "kg_type": "ladies",
+        "kg_type": "total_eb",
+        "start_year": "1768",
+        "hit_count": "term",
+        "end_year": "1860",
+        "preprocess": "lemmatize",
+        "data": "commodities.txt"
     }
-    result_file_path = "ladies_publication_normalized.yml"
-    job_id = "customer_ladies_publication_normalized1"
+    result_file_path = "frequency_keysearch_by_year_commodities.yml"
+    job_id = "evaluation_spark_commodities_core4_instance1_year1768-1860_2"
 
     service.submit_job(job_id, model_name, query_name, endpoint, query_config, result_file_path)
 
-    #another_service = DefoeService(main_python_file_uri, python_file_uris, cluster)
-    #print(DefoeService.preComputedJobID)
-    print(service.get_status(job_id))
+    # another_service = DefoeService(main_python_file_uri, python_file_uris, cluster)
+    # print(DefoeService.preComputedJobID)
+    print()

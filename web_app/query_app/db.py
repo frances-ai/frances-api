@@ -1,7 +1,6 @@
 import psycopg2
 import psycopg2.extras
 
-import json
 import time
 import uuid
 from pathlib import Path
@@ -40,12 +39,15 @@ def record_to_defoe_query_task(record):
 class Database:
     def __init__(self, config):
         self.db = psycopg2.connect(
-            host=config.host,
+            host=config["host"],
             port="5432",
-            user=config.user,
-            password=config.password
+            user=config["user"],
+            password=config["password"]
         )
         self.create_tables()
+
+    def rollback(self):
+        self.db.rollback()
 
     def create_tables(self):
         f = open(tables_file_path, "r")
@@ -53,8 +55,8 @@ class Database:
         self.db.cursor().execute(queries)
         self.db.commit()
 
-    def get_user_by_id(self, id):
-        sql = "SELECT userId, firstName, lastName,email,password FROM Users WHERE UserID=%s;"
+    def get_active_user_by_id(self, id):
+        sql = "SELECT userId, firstName, lastName,email,password FROM Users WHERE UserID=%s and status='active';"
         cursor = self.db.cursor()
         cursor.execute(sql, (id,))
 
@@ -66,7 +68,7 @@ class Database:
         return User(*res)
 
     def get_user_by_email(self, email):
-        sql = "SELECT userId,firstName, lastName,email,password FROM Users WHERE Email=%s;"
+        sql = "SELECT userId,firstName, lastName,email,password FROM Users WHERE email=%s;"
         cursor = self.db.cursor()
         cursor.execute(sql, (email,))
 
@@ -141,8 +143,10 @@ class Database:
         sql = "INSERT INTO  DefoeQueryConfigs(configID, collection, queryType, preprocess, lexiconFile, targetSentences, targetFilter, startYear, endYear, hitCount, snippetWindow, gazetteer, boundingBox)" \
               " VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s);"
         vals = (
-        config.id, config.collection, config.queryType, config.preprocess, config.lexiconFile, config.targetSentences,
-        config.targetFilter, config.startYear, config.endYear, config.hitCount, config.window, config.gazetteer, config.boundingBox)
+            config.id, config.collection, config.queryType, config.preprocess, config.lexiconFile,
+            config.targetSentences,
+            config.targetFilter, config.startYear, config.endYear, config.hitCount, config.window, config.gazetteer,
+            config.boundingBox)
 
         cursor = self.db.cursor()
         cursor.execute(sql, vals)
@@ -193,7 +197,6 @@ class DefoeQueryConfig:
         self.window = window
         self.gazetteer = gazetteer
         self.boundingBox = boundingBox
-
 
     @staticmethod
     def create_new(collection, queryType, preprocess, lexiconFile, targetSentences, targetFilter, startYear, endYear,
@@ -259,7 +262,7 @@ if __name__ == "__main__":
     user = User.create_new("wilfrid", "kins", "in@gmail.com", "abcabc")
     db.add_user(user)
 
-    u = db.get_user_by_id(user.id)
+    u = db.get_active_user_by_id(user.id)
     print("user")
     print(u.first_name)
     print(u.email)

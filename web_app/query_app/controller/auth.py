@@ -1,17 +1,20 @@
 from flasgger import swag_from
-from flask import Blueprint, request, jsonify
+from flask import Blueprint, request, jsonify, current_app
 from http import HTTPStatus
 import validators
 from flask_jwt_extended import create_access_token, create_refresh_token, jwt_required, get_jwt_identity, \
     set_access_cookies, set_refresh_cookies, unset_jwt_cookies
 from werkzeug.security import generate_password_hash, check_password_hash
+import sendgrid
+from sendgrid.helpers.mail import Mail
+from web_app.query_app.flask_config import DefaultFlaskConfig
 
 from ..db import User
-from ..resolver import get_database
 
 auth = Blueprint("auth", __name__, url_prefix="/api/v1/auth")
 auth_protected = Blueprint("auth_protected", __name__, url_prefix="/api/v1/protected/auth")
-database = get_database()
+database = DefaultFlaskConfig.DATABASE
+
 
 def validate_register_info(first_name, last_name, email, password):
     if len(password) < 6:
@@ -45,6 +48,19 @@ def email_registered():
     }), HTTPStatus.OK
 
 
+def send_approval_email(user_details):
+    admin_email = current_app.config["ADMIN_EMAIL"]
+    message = Mail(
+        from_email=admin_email,
+        to_emails=admin_email,
+        subject='New User Account Approval',
+        plain_text_content=f"Please approve the account for {user_details.first_name}  {user_details.last_name}({user_details.email})."
+    )
+    sg = sendgrid.SendGridAPIClient(api_key=current_app.config["SENDGRID_API_KEY"])
+    response = sg.send(message)
+    print(response.status_code)
+
+
 @auth.post("/register")
 @swag_from("../docs/auth/register.yml")
 def register():
@@ -63,16 +79,25 @@ def register():
     # encode password
     pwd_hash = generate_password_hash(password)
 
-    user = User.create_new(first_name=first_name, last_name=last_name, password=pwd_hash, email=email)
-    database.add_user(user)
+    try:
+        # Create user account and store it to database
+        user = User.create_new(first_name=first_name, last_name=last_name, password=pwd_hash, email=email)
+        database.add_user(user)
 
-    return jsonify({
-        "user": {
-            "first_name": first_name,
-            "last_name": last_name,
-            "email": email
-        }
-    }), HTTPStatus.OK
+        # Send admin the register information for approval.
+        send_approval_email(user)
+        return jsonify({
+            "user": {
+                "first_name": first_name,
+                "last_name": last_name,
+                "email": email
+            }
+        }), HTTPStatus.OK
+    except Exception as e:
+        database.rollback()
+        return jsonify({
+            "error": str(e)
+        }), HTTPStatus.BAD_REQUEST
 
 
 @auth.post("/login")
@@ -140,11 +165,16 @@ def refresh_token():
 @swag_from("../docs/auth/profile.yml")
 def profile():
     user_id = get_jwt_identity()
-    user = database.get_user_by_id(user_id)
-    return jsonify({
-        "user": {
-            "first_name": user.first_name,
-            "last_name": user.last_name,
-            "email": user.email
-        }
-    }), HTTPStatus.OK
+    user = database.get_active_user_by_id(user_id)
+    if user:
+        return jsonify({
+            "user": {
+                "first_name": user.first_name,
+                "last_name": user.last_name,
+                "email": user.email
+            }
+        }), HTTPStatus.OK
+    else:
+        return jsonify({
+            "error": "user does not exist"
+        }), HTTPStatus.UNAUTHORIZED

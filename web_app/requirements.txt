@@ -28,3 +28,6 @@ pytest
 google-cloud-storage
 google-cloud-dataproc
 Flask-Limiter
+sendgrid
+grpcio
+grpcio-tools
