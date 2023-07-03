@@ -42,8 +42,6 @@ services:
       - CLUSTER_REGION=<datapro cluster region>
       - GOOGLE_APPLICATION_CREDENTIALS=/gcp/creds.json
     depends_on:
-      consul:
-        condition: service_started
       database:
         condition: service_started
       fuseki:
