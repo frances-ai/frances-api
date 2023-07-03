@@ -26,7 +26,7 @@
     ],
     "year_range": [1700, 1899],
     "num_image_files": 155388,
-    "source": "https://data.nls.uk/data/digitised-collections/encyclopaedia-britannica/"
+    "source": "https://data.nls.uk/data/digitised-collections/chapbooks-printed-in-scotland/"
   },
   {
     "id": 3,
@@ -41,7 +41,7 @@
     ],
     "year_range": [1803, 1901],
     "num_image_files": 155388,
-    "source": "https://data.nls.uk/data/digitised-collections/encyclopaedia-britannica/"
+    "source": "https://data.nls.uk/data/digitised-collections/gazetteers-of-scotland/"
   },
   {
     "id": 4,
@@ -56,6 +56,6 @@
     ],
     "year_range": [1865, 1880],
     "num_image_files": 155388,
-    "source": "https://data.nls.uk/data/digitised-collections/encyclopaedia-britannica/"
+    "source": "https://data.nls.uk/data/digitised-collections/edinburgh-ladies-debating-society/"
   }
 ]
