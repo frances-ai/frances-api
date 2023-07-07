@@ -67,6 +67,18 @@ class Database:
         res = results[0]
         return User(*res)
 
+    def get_active_user_by_email(self, email):
+        sql = "SELECT userId,firstName, lastName,email,password FROM Users WHERE email=%s and status='active';"
+        cursor = self.db.cursor()
+        cursor.execute(sql, (email,))
+
+        results = cursor.fetchall()
+        if len(results) == 0:
+            return None
+
+        res = results[0]
+        return User(*res)
+
     def get_user_by_email(self, email):
         sql = "SELECT userId,firstName, lastName,email,password FROM Users WHERE email=%s;"
         cursor = self.db.cursor()

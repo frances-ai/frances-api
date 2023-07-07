@@ -112,7 +112,7 @@ def login():
             "error": 'Required login info can not be empty'
         }), HTTPStatus.BAD_REQUEST
 
-    user = database.get_user_by_email(email)
+    user = database.get_active_user_by_email(email)
 
     if user:
         pwd_correct = check_password_hash(user.password, password)
