@@ -44,9 +44,13 @@ def get_front_env():
     else:
         port = FRANCES_FRONT_DEFAULT_PORT
 
+    if port == "80":
+        address = HTTP_PROTOCOL + domain
+    else:
+        address = HTTP_PROTOCOL + domain + ':' + port
     return {
         'DOMAIN': domain,
-        'ADDRESS': HTTP_PROTOCOL + domain + ':' + port
+        'ADDRESS': address
     }
 
 
