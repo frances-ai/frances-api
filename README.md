@@ -25,9 +25,15 @@ For the source code, run:
 git clone https://github.com/frances-ai/frances-api
 ```
 
-For the knowledge graphs, download from here: [knowledge graphs](https://universityofstandrews907-my.sharepoint.com/:f:/r/personal/ly40_st-andrews_ac_uk/Documents/knowledge_graphs?csf=1&web=1&e=1dXP1O)
+For the knowledge graphs, put them under folder `frances-api/knowledge_graphs` after downloading from here: 
+* [EB-KG](https://zenodo.org/record/6673897)
+* [ChapbooksScotland-KG](https://zenodo.org/record/6696686)
+* [LadiesDebating-KG](https://zenodo.org/record/6686596)
+* [GazetteersScotland-KG](https://zenodo.org/record/6686829)
 
-For the pre-computed NLP results, embedding and models, download from here: [models](https://universityofstandrews907-my.sharepoint.com/:f:/g/personal/ly40_st-andrews_ac_uk/Eq-ex5z-9atOvjw1LuFri6wBIu8TdW7uLVK-QXgAu2GJQg?e=hHPhGq)
+
+For the pre-computed NLP results, embedding and models, download from here: [models](https://universityofstandrews907-my.sharepoint.com/:f:/g/personal/ly40_st-andrews_ac_uk/Eq-ex5z-9atOvjw1LuFri6wBIu8TdW7uLVK-QXgAu2GJQg?e=hHPhGq). 
+Put them under the folder `frances-api/web_app/models`
 
 ### Install Python3.9
 
@@ -163,7 +169,7 @@ gcloud auth application-default login
 2. Upload the `docker-compose.prod.yml` file to the cloud VM.
 3. Run all services using the following command (in the same directory with uploaded docker compose file):
    ```
-   sudo docker compose -f docker-compose.local.yml up
+   sudo docker compose -f docker-compose.prod.yml up
    ```
 
 
