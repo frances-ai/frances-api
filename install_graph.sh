@@ -31,6 +31,3 @@ for index in "${!datasets[@]}"; do
   fi
 
 done
-
-
-curl -s -o /dev/null -w "%{http_code}" -X GET -u "admin:pass123" "http://fuseki:3030/total_eb"
