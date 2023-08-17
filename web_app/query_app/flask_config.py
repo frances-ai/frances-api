@@ -46,17 +46,20 @@ class DefaultFlaskConfig:
         'Gazetteers of Scotland': 'gazetteers_scotland'
     }
 
-    UPLOAD_FOLDER = str(BASE_DIR) + "/upload_folder"
-
     CONFIG_FOLDER = str(BASE_DIR) + "/config_folder"
-
-    RESULTS_FOLDER = str(BASE_DIR) + "/defoe_results"
 
     IMAGES_FOLDER = str(WEB_APP_DIR) + "/images"
 
     MODELS_FOLDER = str(WEB_APP_DIR) + "/models"
 
     FILE_STORAGE_MODE = get_file_storage_mode()
+
+    if FILE_STORAGE_MODE == "gs":
+        UPLOAD_FOLDER = "upload_folder"
+        RESULTS_FOLDER = "defoe_results"
+    else:
+        UPLOAD_FOLDER = str(BASE_DIR) + "/upload_folder"
+        RESULTS_FOLDER = str(BASE_DIR) + "/defoe_results"
 
     DATABASE = get_database()
 
@@ -68,7 +71,7 @@ class DefaultFlaskConfig:
 
     ALLOWED_EXTENSIONS = {'txt', 'yaml', 'yml'}
 
-    SENDGRID_API_KEY = "YOUR SENDGRID API KEY"
+    SENDGRID_API_KEY = "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"
     ADMIN_EMAIL = "damonyu97@gmail.com"
 
     # OpenAPI

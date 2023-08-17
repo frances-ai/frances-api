@@ -595,12 +595,14 @@ def defoe_queries():
     # Save defoe query task information to database
 
     query_task = DefoeQueryTask.create_new(user_id, defoe_query_config, "", "")
+    result_filename = str(query_task.id) + ".yml"
     result_file_path = os.path.join(result_folder, user_id, str(query_task.id) + ".yml")
 
     if (kg_type + '_' + defoe_selection) in defoe_service.get_pre_computed_queries():
         result_file_path = defoe_service.get_pre_computed_queries()[kg_type + '_' + defoe_selection]
+        result_filename = result_file_path
 
-    query_task.resultFile = result_file_path
+    query_task.resultFile = result_filename
 
     # create query_config for defoe query
     config = create_defoe_query_config(kg_type, preprocess, hit_count, data_file,
@@ -805,6 +807,8 @@ def defoe_query_task():
 
 def result_filename_to_absolute_filepath(result_filename, user_id):
     if "precomputedResult" in result_filename:
+        if current_app.config["FILE_STORAGE_MODE"] == "gs":
+            return result_filename
         base_dir = str(current_app.config['BASE_DIR'])
         print(base_dir)
         print(os.path.join(base_dir, result_filename))
@@ -818,19 +822,19 @@ def result_filename_to_absolute_filepath(result_filename, user_id):
 def defoe_query_result():
     user_id = get_jwt_identity()
     result_filename = request.json.get('result_filename')
+    result_filepath = result_filename_to_absolute_filepath(result_filename, user_id)
+    print(result_filepath)
     if current_app.config["FILE_STORAGE_MODE"] == "gs":
         # Validate file path
         # If the file exists
         # TODO If the file is accessible to this user
         # Convert result to object
-        results = google_cloud_storage.read_results(result_filename)
+        results = google_cloud_storage.read_results(result_filepath)
         return jsonify({
             "results": results
         })
 
     if current_app.config["FILE_STORAGE_MODE"] == "local":
-        result_filepath = result_filename_to_absolute_filepath(result_filename, user_id)
-        print(result_filepath)
         # Validate file path
         # If the file exists
         if result_filepath is not None and not os.path.isfile(result_filepath):
@@ -873,15 +877,14 @@ def download():
     zip_file_path = result_file_path[:-3] + "zip"
 
     if current_app.config["FILE_STORAGE_MODE"] == "gs":
-        zip_file_path = result_filename[:-3] + "zip"
-        result_user_folder = os.path.dirname(result_filename)
+        result_user_folder = os.path.dirname(result_file_path)
         print(result_user_folder)
         # Make directories relative to the working folder
         os.makedirs(result_user_folder, exist_ok=True)
         print(os.path.basename(result_filename))
 
         # It will download file to result_filename, which tells the relative path from the working folder
-        google_cloud_storage.download_blob_from_filename(result_filename, result_filename)
+        google_cloud_storage.download_blob_from_filename(result_file_path, result_file_path)
         with ZipFile(zip_file_path, 'w', ZIP_DEFLATED) as zipf:
             zipf.write(result_filename, arcname=os.path.basename(result_filename))
     elif current_app.config["FILE_STORAGE_MODE"] == "local":
