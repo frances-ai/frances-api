@@ -160,6 +160,69 @@ def refresh_token():
     return response, HTTPStatus.OK
 
 
+
+@auth_protected.post('/activateUser')
+@jwt_required()
+@swag_from("../docs/auth/activateUser.yml")
+def activateUser():
+
+    user_id = request.json['user_id']
+    database.activateUser(user_id)
+
+    access_token = create_access_token(identity=user_id)
+    response = jsonify({
+        "Activate": True
+    })
+    set_access_cookies(response, access_token)
+    return response, HTTPStatus.OK
+
+@auth_protected.post('/deleteUser')
+@jwt_required()
+@swag_from("../docs/auth/deleteUser.yml")
+def deleteUser():
+
+    user_id = request.json['user_id']
+    database.deleteUser(user_id)
+
+    access_token = create_access_token(identity=user_id)
+    response = jsonify({
+        "Delete": True
+    })
+    set_access_cookies(response, access_token)
+    return response, HTTPStatus.OK
+
+
+@auth_protected.get("/pendingUsers")
+@jwt_required()
+@swag_from("../docs/auth/pendingUsers.yml")
+def pendingUsers():
+
+    users = database.get_pending_users()
+    if users:
+        return jsonify({
+            "users_dicts": list(map(lambda user: user.to_dict(), users))
+        })
+    else:
+        return jsonify({
+            "error": "no users currently pending"
+        }), HTTPStatus.UNAUTHORIZED
+    
+@auth_protected.get("/activeUsers")
+@jwt_required()
+@swag_from("../docs/auth/activeUsers.yml")
+def activeUsers():
+
+    users = database.get_active_users()
+    if users:
+        return jsonify({
+            "users_dicts": list(map(lambda user: user.to_dict(), users))
+        })
+    else:
+        return jsonify({
+            "error": "no users currently active"
+        }), HTTPStatus.UNAUTHORIZED
+
+
 @auth_protected.get("/profile")
 @jwt_required()
 @swag_from("../docs/auth/profile.yml")

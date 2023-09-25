@@ -247,6 +247,32 @@ def similar_terms(termlink=None):
     else:
         heatmap_plot = None
 
+    
+    # print(results)    
+    # print("results")
+    # results_type = type(results)
+    # print(results_type)
+    # # print(results[1])
+    # print("sorted results")
+    # sorted_results = sorted(results.items(), key=lambda x: x[1][1])
+    # sorted_type = type(sorted_results)
+    # print(sorted_type)
+    # print(sorted_results)
+
+    # print("sorted results dict")
+    sorted_results_dict = dict(sorted(results.items(), key=lambda x: x[1][1]))
+    dict_type = type(sorted_results_dict)
+    print(dict_type)
+    # print (sorted_results_dict)
+
+
+    results = sorted_results_dict
+    print("converted results")
+    # print(results)
+    # results = sorted_results
+
+    # print(results)
+
     #### Pagination ###
     page = int(request.json.get("page", 1))
     page_size = 10
@@ -254,20 +280,28 @@ def similar_terms(termlink=None):
     offset = (page - 1) * per_page
     limit = offset + per_page
     results_page = dict(islice(results.items(), offset, limit))
+    
     results_for_render = sanitize_results(results_page)
+    sorted_results_for_render = dict(sorted(results_for_render.items(), key=lambda x: x[1][1]))
+    print(sorted_results_for_render)
+    
     pagination = Pagination(page=page, total=len(results), per_page=page_size, search=False)
     ##############
 
     if "free_search" in uri_raw:
-        return jsonify({
-            "results": results_for_render,
+      
+        response_data = {
+            "results": sorted_results_for_render,
             "pagination": pagination_to_dict(pagination),
             "bar_plot": figure_to_dict(bar_plot),
             "heatmap_plot": figure_to_dict(heatmap_plot),
-        }), HTTPStatus.OK
+        }
+       
+        return jsonify(response_data), HTTPStatus.OK
     else:
+    
         return jsonify({
-            "results": results_for_render,
+            "results": sorted_results_for_render,
             "pagination": pagination_to_dict(pagination),
             "term": term,
             "definition": definition,
@@ -280,6 +314,33 @@ def similar_terms(termlink=None):
             "bar_plot": figure_to_dict(bar_plot),
             "heatmap_plot": figure_to_dict(heatmap_plot),
         }), HTTPStatus.OK
+
+    # if "free_search" in uri_raw:
+    #     response_data = {
+    #         "results": results_for_render,
+    #         "pagination": pagination_to_dict(pagination),
+    #         "bar_plot": figure_to_dict(bar_plot),
+    #         "heatmap_plot": figure_to_dict(heatmap_plot),
+    #     }
+
+    #     print("Response Data:", response_data)  # Print the response data
+    #     return jsonify(response_data), HTTPStatus.OK
+    # else:
+     
+    #     return jsonify({
+    #         "results": results_for_render,
+    #         "pagination": pagination_to_dict(pagination),
+    #         "term": term,
+    #         "definition": definition,
+    #         "uri": uri_raw,
+    #         "enum": enum,
+    #         "year": year,
+    #         "vnum": vnum,
+    #         "topicName": t_name,
+    #         "topicSentiment": t_sentiment,
+    #         "bar_plot": figure_to_dict(bar_plot),
+    #         "heatmap_plot": figure_to_dict(heatmap_plot),
+    #     }), HTTPStatus.OK
 
 
 @query.route("/topic_modelling", methods=["GET", "POST"])
@@ -804,12 +865,13 @@ def defoe_query_task():
 
 
 def result_filename_to_absolute_filepath(result_filename, user_id):
+    base_dir = str(current_app.config['BASE_DIR'])
     if "precomputedResult" in result_filename:
         base_dir = str(current_app.config['BASE_DIR'])
         print(base_dir)
         print(os.path.join(base_dir, result_filename))
         return os.path.join(base_dir, result_filename)
-    return os.path.join(result_folder, user_id, result_filename)
+    return os.path.join(base_dir, result_filename)
 
 
 @query_protected.route("/defoe_query_result", methods=['POST'])
@@ -851,7 +913,24 @@ def defoe_query_result():
 @limiter.limit("30/second")  # 30 requests per second
 def defoe_query_tasks():
     user_id = get_jwt_identity()
-    print('query')
+
+    # List all defoe query tasks this user submitted
+    tasks = database.get_all_defoe_query_tasks_by_userID(user_id)
+
+    return jsonify({
+        "tasks": list(map(lambda task: task.to_dict(), tasks))
+    })
+
+#Additional method for retrieving all defoe query tasks for a specific user by a provided id
+#Uses the same db method as the existing method 
+@query_protected.route("/defoe_query_tasks_for_user", methods=['POST'])
+@jwt_required()
+@limiter.limit("30/second")  # 30 requests per second
+def defoe_query_tasks_for_user():
+
+    request_body = request.get_json()
+    user_id = request.json['user_id']
+    
     # List all defoe query tasks this user submitted
     tasks = database.get_all_defoe_query_tasks_by_userID(user_id)
 

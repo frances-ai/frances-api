@@ -55,6 +55,54 @@ class Database:
         self.db.cursor().execute(queries)
         self.db.commit()
 
+    def get_pending_users(self):
+        sql = "SELECT userId, firstName, lastName,email,password FROM Users WHERE status='pending';"
+        cursor = self.db.cursor()
+        cursor.execute(sql)
+
+        results = cursor.fetchall()
+        if len(results) == 0:
+            return None
+        res = results[0]
+        users = []
+        for res in results:
+            users.append(User(*res))
+        return users
+
+    def get_active_users(self):
+        sql = "SELECT userId, firstName, lastName,email,password FROM Users WHERE status='active';"
+        cursor = self.db.cursor()
+        cursor.execute(sql)
+
+        results = cursor.fetchall()
+        if len(results) == 0:
+            return None
+        res = results[0]
+        users = []
+        for res in results:
+            users.append(User(*res))
+        return users
+
+    def activateUser(self, id):
+        print("User ID is:",id)
+     
+        sql = "UPDATE users SET status='active' WHERE UserID=%s and status='pending';"
+        cursor = self.db.cursor()
+        cursor.execute(sql, (id,))
+        self.db.commit()
+        return
+
+    def deleteUser(self, id):
+        print("User ID is:",id)
+     
+        sql = "UPDATE users SET status='deleted' WHERE UserID=%s;"
+        
+        cursor = self.db.cursor()
+        cursor.execute(sql, (id,))
+        self.db.commit()
+        return
+
+
     def get_active_user_by_id(self, id):
         sql = "SELECT userId, firstName, lastName,email,password FROM Users WHERE UserID=%s and status='active';"
         cursor = self.db.cursor()
@@ -190,6 +238,15 @@ class User:
     def create_new(first_name, last_name, email, password):
         id = uuid.uuid5(uuid.NAMESPACE_URL, namespace + first_name + str(time.time()))
         return User(id, first_name, last_name, email, password)
+
+    def to_dict(self):
+        return {
+            "id": self.id,
+            "first_name": self.first_name,
+            "last_name": self.last_name,
+            "email": self.email,
+            "password": self.password
+        }
 
 
 class DefoeQueryConfig:
