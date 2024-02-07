@@ -10,5 +10,10 @@ node_modules
 # Linux files being edited
 *~
 /NLS_EB/
+/NLS_EB/Notebooks/PostProcess
 /NLS_Generic/
 /presentation/
+/knowledge_graphs/
+/postgres/
+/web_app/query_app/upload_folder
+/web_app/query_app/defoe_results

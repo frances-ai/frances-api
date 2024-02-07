@@ -15,8 +15,8 @@ import numpy as np
 import json
 
 
-def get_kg_type(collection):
-    return DefaultFlaskConfig.KG_TYPES_MAP[collection]
+def get_kg_type(collection, source_provider="NLS"):
+    return DefaultFlaskConfig.KG_TYPES_MAP[collection][source_provider]
 
 
 def get_kg_url(kg_type):

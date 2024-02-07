@@ -1,6 +1,10 @@
+import logging
 import os
 
-from .db import Database
+from flask import jsonify
+from werkzeug.security import generate_password_hash
+
+from .db import Database, User
 
 from ..defoe_service.dataproc_defoe_service import DataprocDefoeService
 from ..defoe_service.local_defoe_service import LocalDefoeService
@@ -22,7 +26,7 @@ database = None
 defoe_service = None
 cloud_storage_service = None
 
-kg_base_url = "http://127.0.0.1:3030/"
+kg_base_url = "http://www.frances-ai.com:3030/"
 
 if os.getenv("KG_BASE_URL"):
     kg_base_url = os.getenv("KG_BASE_URL")
@@ -66,7 +70,32 @@ def get_database():
     if MODE == "deploy":
         database_config["host"] = "database"
     database = Database(database_config)
+    add_init_user(database)
     return database
+
+
+def add_init_user(database):
+    email = "admin@frances-ai.com"
+    if database.get_user_by_email(email) is not None:
+        # user has been registered.
+        return
+
+    # add init user to database
+    # encode password
+    password = "admin123"
+    first_name = "Admin"
+    last_name = "Admin"
+    pwd_hash = generate_password_hash(password)
+
+    try:
+        user = User.create_new(first_name=first_name, last_name=last_name, password=pwd_hash, email=email)
+        database.add_active_user(user)
+        logging.info("user created!")
+    except Exception as e:
+        print(e)
+        database.rollback()
+
+
 
 
 MAIN_PYTHON_FILE_URI = "gs://frances2023/run_query.py"

@@ -40,10 +40,10 @@ class DefaultFlaskConfig:
     }
 
     KG_TYPES_MAP = {
-        'Encyclopaedia Britannica': 'total_eb',
-        'Chapbooks printed in Scotland': 'chapbooks_scotland',
-        'Ladies’ Edinburgh Debating Society': 'ladies',
-        'Gazetteers of Scotland': 'gazetteers_scotland'
+        'Encyclopaedia Britannica': {'NLS': 'total_eb', 'HQ': 'total_eb_hq'},
+        'Chapbooks printed in Scotland': {'NLS': 'chapbooks_scotland'},
+        'Ladies’ Edinburgh Debating Society': {'NLS': 'ladies'},
+        'Gazetteers of Scotland': {'NLS': 'gazetteers_scotland'}
     }
 
     CONFIG_FOLDER = str(BASE_DIR) + "/config_folder"

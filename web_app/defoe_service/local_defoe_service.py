@@ -10,6 +10,7 @@ class LocalDefoeService:
     @staticmethod
     def get_pre_computed_queries():
         return {
+            "total_eb_hq_publication_normalized": "precomputedResult/total_eb_hq_publication_normalized.yml",
             "total_eb_publication_normalized": "precomputedResult/total_eb_publication_normalized.yml",
             "chapbooks_scotland_publication_normalized": "precomputedResult"
                                                          "/chapbooks_scotland_publication_normalized.yml",
@@ -73,14 +74,21 @@ if __name__ == "__main__":
     service = LocalDefoeService(channel)
 
     model_name = 'sparql'
+    endpoint = 'http://www.frances-ai.com:3030/total_eb_hq/sparql'
     query_name = 'frequency_keysearch_by_year'
-    endpoint = 'http://35.228.63.82:3030/total_eb/sparql'
-    query_config = {'preprocess': 'none', 'target_sentences': '', 'hit_count': 'term', 'data': 'upload_folder/0fc7014e-7068-528e-997b-ee68d67116a5/20230620-222746_animal.txt', 'gazetteer': '', 'start_year': '1768', 'end_year': '1860', 'kg_type': 'total_eb', 'window': 'None'}
-    result_file_path = "/Users/ly40/Documents/frances-ai/frances-api/animal_freq.yml"
-    job_id = 'cd93703f-e094-548d-9a42-368a06826064'
+    query_config = {'preprocess': 'none', 'target_sentences': '', 'hit_count': 'term', 'data': '/Users/ly40/Documents/frances-ai/defoe_lib/queries/animal.txt', 'gazetteer': '', 'start_year': '1768', 'end_year': '1844', 'kg_type': 'total_eb_hq', 'window': 'None'}
+    result_file_path = "/Users/ly40/Documents/frances-ai/frances-api/publication.yml"
+
+    #query_name = 'geoparser_by_year'
+    #query_config = {'preprocess': 'none', 'target_sentences': '', 'hit_count': 'term', 'data': '/Users/ly40/Documents/frances-ai/defoe_lib/queries/scots.txt', 'gazetteer': 'geonames', 'start_year': '1770', 'end_year': '1772', 'kg_type': 'chapbooks_scotland', 'window': 'None'}
+    #result_file_path = "/Users/ly40/Documents/frances-ai/frances-api/scots_geoparser.yml"
+    job_id = 'cd93703f-e094-5'
+
+    query_name = 'publication_normalized'
 
     service.submit_job(job_id, model_name, query_name, endpoint, query_config, result_file_path)
 
     # another_service = DefoeService(main_python_file_uri, python_file_uris, cluster)
     # print(DefoeService.preComputedJobID)
     print(service.get_status(job_id))
+

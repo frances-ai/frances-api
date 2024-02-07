@@ -25,6 +25,7 @@ class DataprocDefoeService:
     @staticmethod
     def get_pre_computed_queries():
         return {
+            "total_eb_hq_publication_normalized": "precomputedResult/total_eb_hq_publication_normalized.yml",
             "total_eb_publication_normalized": "precomputedResult/total_eb_publication_normalized.yml",
             "chapbooks_scotland_publication_normalized": "precomputedResult"
                                                          "/chapbooks_scotland_publication_normalized.yml",
@@ -100,10 +101,10 @@ class DataprocDefoeService:
                 "python_file_uris": self.python_file_uris,
                 "args": args,
                 "properties": {
-                    "spark.executor.cores": "8",
-                    "spark.executor.instances": "36",
+                    "spark.executor.cores": "4",
+                    "spark.executor.instances": "4",
                     "spark.dynamicAllocation.enabled": "false",
-                    "spark.cores.max": "144"
+                    "spark.cores.max": "8"
                 }
             },
         }
@@ -151,7 +152,7 @@ class DataprocDefoeService:
 
 if __name__ == "__main__":
     main_python_file_uri = "gs://frances2023/run_query.py"
-    python_file_uris = ["file:///home/defoe.zip"]
+    python_file_uris = ["gs://frances2023/defoe-v2.zip"]
     cluster = {
         "cluster_name": "cluster-8753",
         "project_id": "frances-365422",
@@ -161,17 +162,17 @@ if __name__ == "__main__":
 
     model_name = "sparql"
     query_name = "frequency_keysearch_by_year"
-    endpoint = "http://35.228.63.82:3030/total_eb/sparql"
+    endpoint = "http://www.frances-ai.com:3030/total_eb/sparql"
     query_config = {
         "kg_type": "total_eb",
         "start_year": "1768",
         "hit_count": "term",
-        "end_year": "1860",
+        "end_year": "1800",
         "preprocess": "lemmatize",
         "data": "commodities.txt"
     }
     result_file_path = "frequency_keysearch_by_year_commodities.yml"
-    job_id = "evaluation_spark_commodities_core4_instance1_year1768-1860_2"
+    job_id = "new_defoe_test9"
 
     service.submit_job(job_id, model_name, query_name, endpoint, query_config, result_file_path)
 

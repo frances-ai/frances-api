@@ -574,19 +574,20 @@ def defoe_queries():
     hit_count = request.json.get('hit_count')
     lexicon_file = request.json.get('file', '')
     data_file = os.path.join(upload_folder, user_id, lexicon_file)
+    source_provider = request.json.get('source_provider', 'NLS')
 
     # For geoparser_by_year query, add bounding_box and gazetteer
     bounding_box = request.json.get('bounding_box')
     gazetteer = request.json.get('gazetteer')
     collection = request.json.get('collection', 'Encyclopaedia Britannica')
 
-    kg_type = get_kg_type(collection)
+    kg_type = get_kg_type(collection, source_provider)
 
     # For terms_snippet_keysearch_by_year query, add window
     window = request.json.get('window')
 
     # Save config data to database
-    defoe_query_config = DefoeQueryConfig.create_new(collection, defoe_selection, preprocess, lexicon_file,
+    defoe_query_config = DefoeQueryConfig.create_new(collection, source_provider, defoe_selection, preprocess, lexicon_file,
                                                      target_sentences, target_filter,
                                                      start_year, end_year, hit_count,
                                                      window, gazetteer, bounding_box)
@@ -794,7 +795,7 @@ def defoe_query_task():
         }), HTTPStatus.BAD_REQUEST
     else:
         if task.config.queryType == "frequency_keysearch_by_year":
-            kg_type = get_kg_type(task.config.collection)
+            kg_type = get_kg_type(task.config.collection, task.config.sourceProvider)
             query_info = kg_type + "_publication_normalized"
             return jsonify({
                 "task": task.to_dict(),
@@ -855,12 +856,20 @@ def defoe_query_result():
 @limiter.limit("30/second")  # 30 requests per second
 def defoe_query_tasks():
     user_id = get_jwt_identity()
-    print('query')
+    options = {}
+    options["page"] = request.json.get("page", 1)
+    options["per_page"] = request.json.get("per_page", 10)
+    options["sort_by"] = request.json.get("sort_by", "submitTime")
+    options["sort_order"] = request.json.get("sort_order", "desc")
     # List all defoe query tasks this user submitted
-    tasks = database.get_all_defoe_query_tasks_by_userID(user_id)
+    # tasks = database.get_all_defoe_query_tasks_by_userID(user_id)
+    filters = {"userID": user_id}
+    tasks = database.get_defoe_query_tasks(options, filters)
+    total_count = database.count_defoe_query_tasks(filters)
 
     return jsonify({
-        "tasks": list(map(lambda task: task.to_dict(), tasks))
+        "tasks": list(map(lambda task: task.to_dict(), tasks)),
+        "total_count": total_count
     })
 
 
