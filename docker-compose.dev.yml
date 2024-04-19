@@ -9,13 +9,21 @@ services:
       - "5432:5432"
     volumes:
       - ./postgres/data:/var/lib/postgresql/data
+  fuseki-data:
+    image: busybox
+    volumes:
+      - /fuseki
   fuseki:
-    image: stain/jena-fuseki
+    image: stain/jena-fuseki:4.0.0
     ports:
       - "3030:3030"
+    volumes_from:
+      - fuseki-data
     environment:
       - ADMIN_PASSWORD=pass123
-      - JVM_ARGS=-Xmx4g
+      - JVM_ARGS=-Xmx8g
+    volumes:
+      - ./knowledge_graphs:/staging
     deploy:
       resources:
         limits:

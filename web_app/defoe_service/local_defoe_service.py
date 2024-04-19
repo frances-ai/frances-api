@@ -10,8 +10,9 @@ class LocalDefoeService:
     @staticmethod
     def get_pre_computed_queries():
         return {
-            "total_eb_hq_publication_normalized": "precomputedResult/total_eb_hq_publication_normalized.yml",
-            "total_eb_publication_normalized": "precomputedResult/total_eb_publication_normalized.yml",
+            "ebo_total_neuspell_publication_normalized": "precomputedResult/ebo_total_neuspell_publication_normalized.yml",
+            "ebo_total_hq_publication_normalized": "precomputedResult/ebo_total_hq_publication_normalized.yml",
+            "ebo_total_publication_normalized": "precomputedResult/ebo_total_publication_normalized.yml",
             "chapbooks_scotland_publication_normalized": "precomputedResult"
                                                          "/chapbooks_scotland_publication_normalized.yml",
             "gazetteers_scotland_publication_normalized": "precomputedResult"
@@ -74,17 +75,19 @@ if __name__ == "__main__":
     service = LocalDefoeService(channel)
 
     model_name = 'sparql'
-    endpoint = 'http://www.frances-ai.com:3030/total_eb_hq/sparql'
-    query_name = 'frequency_keysearch_by_year'
-    query_config = {'preprocess': 'none', 'target_sentences': '', 'hit_count': 'term', 'data': '/Users/ly40/Documents/frances-ai/defoe_lib/queries/animal.txt', 'gazetteer': '', 'start_year': '1768', 'end_year': '1844', 'kg_type': 'total_eb_hq', 'window': 'None'}
-    result_file_path = "/Users/ly40/Documents/frances-ai/frances-api/publication.yml"
+    endpoint = 'http://35.223.51.36:3030/ebo_total_neuspell/sparql'
+    #query_name = 'frequency_keysearch_by_year'
+    #query_name = 'snippet_keysearch_by_year'
+    query_name = 'publication_normalized'
+    query_config = {'preprocess': 'normalize', 'target_sentences': '', 'hit_count': 'word', 'data': '/Users/ly40/Documents/frances-ai/defoe_lib/queries/animal.txt', 'gazetteer': '', 'start_year': '1771', 'end_year': '1771', 'kg_type': 'ebo_1_1771_Cnnlstm', 'window': '10'}
+    result_file_path = "/Users/ly40/Documents/frances-ai/frances-api/ebo_total_neuspell.yml"
 
     #query_name = 'geoparser_by_year'
     #query_config = {'preprocess': 'none', 'target_sentences': '', 'hit_count': 'term', 'data': '/Users/ly40/Documents/frances-ai/defoe_lib/queries/scots.txt', 'gazetteer': 'geonames', 'start_year': '1770', 'end_year': '1772', 'kg_type': 'chapbooks_scotland', 'window': 'None'}
     #result_file_path = "/Users/ly40/Documents/frances-ai/frances-api/scots_geoparser.yml"
-    job_id = 'cd93703f-e094-5'
+    job_id = 'cd93703f-e09-ebo_1_1771_Cnnlstm_snippet'
 
-    query_name = 'publication_normalized'
+    #query_name = 'publication_normalized'
 
     service.submit_job(job_id, model_name, query_name, endpoint, query_config, result_file_path)
 

@@ -1,6 +1,7 @@
 import logging
 import os
 
+from elasticsearch import Elasticsearch
 from flask import jsonify
 from werkzeug.security import generate_password_hash
 
@@ -25,13 +26,30 @@ DATABASE_PASSWORD = "frances"
 database = None
 defoe_service = None
 cloud_storage_service = None
+elasticsearch = None
 
-kg_base_url = "http://www.frances-ai.com:3030/"
+kg_base_url = "http://query.frances-ai.com/"
 
 if os.getenv("KG_BASE_URL"):
     kg_base_url = os.getenv("KG_BASE_URL")
 
 MODE = "local"
+
+
+def get_hto_kg_endpoint():
+    kg_name = "hto"
+    return kg_base_url + kg_name + "/sparql"
+
+
+def get_es():
+    global elasticsearch
+    if elasticsearch is not None:
+        return elasticsearch
+    elasticsearch = Elasticsearch(
+        "https://83a1253d6aac48278867d36eed60b642.us-central1.gcp.cloud.es.io:443",
+        api_key="cmtBajU0MEJiRUoteDA3bmtubEE6bHpVYzFlSWNUSXFWcG8tbHFnOUFxQQ=="
+    )
+    return elasticsearch
 
 
 def get_front_env():

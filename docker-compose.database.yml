@@ -1,0 +1,11 @@
+version: "3.9"
+services:
+  database:
+    image: postgres
+    environment:
+      - POSTGRES_USER=frances
+      - POSTGRES_PASSWORD=frances
+    ports:
+      - "5432:5432"
+    volumes:
+      - ./postgres/data:/var/lib/postgresql/data

@@ -86,7 +86,7 @@ def volume_list():
     kg_type = get_kg_type(collection_name)
     edition_uri = request.args.get("uri")
     edition_uri = "<" + edition_uri + ">"
-    return jsonify(get_volumes(kg_type, edition_uri)), HTTPStatus.OK
+    return jsonify(get_volumes(edition_uri)), HTTPStatus.OK
 
 
 @collection.get("/volume")
@@ -97,10 +97,10 @@ def volume():
     volume_uri = "<" + volume_uri + ">"
     if kg_type == "total_eb":
         return jsonify({
-            "detail": get_volume_details(kg_type, volume_uri),
+            "detail": get_volume_details(volume_uri),
             "statistics": get_eb_vol_statistics(volume_uri)
         }), HTTPStatus.OK
 
     return jsonify({
-        "detail": get_volume_details(kg_type, volume_uri)
+        "detail": get_volume_details(volume_uri)
     }), HTTPStatus.OK
