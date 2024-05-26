@@ -1,3 +1,5 @@
+import logging
+
 from flasgger import swag_from
 from flask import Blueprint, request, jsonify, current_app
 from http import HTTPStatus
@@ -7,7 +9,7 @@ from flask_jwt_extended import create_access_token, create_refresh_token, jwt_re
 from werkzeug.security import generate_password_hash, check_password_hash
 import sendgrid
 from sendgrid.helpers.mail import Mail
-from web_app.query_app.flask_config import DefaultFlaskConfig
+from ..flask_config import DefaultFlaskConfig
 
 from ..db import User
 
@@ -83,7 +85,6 @@ def register():
         # Create user account and store it to database
         user = User.create_new(first_name=first_name, last_name=last_name, password=pwd_hash, email=email)
         database.add_user(user)
-
         # Send admin the register information for approval.
         send_approval_email(user)
         return jsonify({

@@ -6,7 +6,7 @@ from os.path import dirname, abspath, join
 from flask import Blueprint, jsonify, request, send_file
 
 from .sparql_queries import *
-from web_app.query_app.flask_config import DefaultFlaskConfig
+from ..flask_config import DefaultFlaskConfig
 from .utils import get_kg_type
 
 collection = Blueprint("collection", __name__, url_prefix="/api/v1/collection")
@@ -17,7 +17,7 @@ image_path = DefaultFlaskConfig.IMAGES_FOLDER
 def get_collections_list():
     collections_detail = get_collections_json()
     collections = list(map(lambda c: {
-        "id": c["id"],
+        "uri": c["uri"],
         "name": c["name"],
         "image_name": c["cover_image_name_small"],
         "year_range": c["year_range"]
@@ -40,16 +40,16 @@ def get_collection_image():
     return send_file(image_file_path, mimetype="image/jpeg")
 
 
-def get_collection_by_id(collection_id):
+def get_collection_by_uri(collection_uri):
     collections_detail = get_collections_json()
-    collection_detail = next((c for c in collections_detail if c["id"] == collection_id), None)
+    collection_detail = next((c for c in collections_detail if c["uri"] == collection_uri), None)
     return collection_detail
 
 
-@collection.get("/")
+@collection.post("/")
 def get_collection_detail():
-    collection_id = request.args.get("id", type=int)
-    return jsonify(get_collection_by_id(collection_id)), HTTPStatus.OK
+    collection_uri = request.json.get("uri")
+    return jsonify(get_collection_by_uri(collection_uri)), HTTPStatus.OK
 
 
 @collection.route("/eb_edition/list", methods=['GET'])
@@ -84,9 +84,11 @@ def nls_serie():
 def volume_list():
     collection_name = request.args.get("collection")
     kg_type = get_kg_type(collection_name)
+    if "ebo" in kg_type:
+        kg_type = "hto"
     edition_uri = request.args.get("uri")
     edition_uri = "<" + edition_uri + ">"
-    return jsonify(get_volumes(kg_type, edition_uri)), HTTPStatus.OK
+    return jsonify(get_volumes(edition_uri, kg_type)), HTTPStatus.OK
 
 
 @collection.get("/volume")
@@ -95,12 +97,14 @@ def volume():
     kg_type = get_kg_type(collection_name)
     volume_uri = request.args.get("uri")
     volume_uri = "<" + volume_uri + ">"
-    if kg_type == "total_eb":
+    if "ebo" in kg_type:
+        kg_type = "hto"
+    if kg_type == "hto":
         return jsonify({
-            "detail": get_volume_details(kg_type, volume_uri),
+            "detail": get_volume_details(volume_uri),
             "statistics": get_eb_vol_statistics(volume_uri)
         }), HTTPStatus.OK
 
     return jsonify({
-        "detail": get_volume_details(kg_type, volume_uri)
+        "detail": get_volume_details(volume_uri, kg_type)
     }), HTTPStatus.OK

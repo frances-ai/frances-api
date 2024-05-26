@@ -26,7 +26,7 @@ CREATE TABLE IF NOT EXISTS DefoeQueryConfigs (
   snippetWindow INTEGER,
   gazetteer VARCHAR(20),
   boundingBox VARCHAR(100),
-sourceProvider VARCHAR(20)
+sourceProvider VARCHAR(20) NOT NULL DEFAULT 'NLS'
 );
 
 CREATE TABLE IF NOT EXISTS DefoeQueryTasks (
