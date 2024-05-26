@@ -17,9 +17,9 @@ services:
     environment:
       - FRANCES_FRONT_DOMAIN=www.frances-ai.com
       - FRANCES_FRONT_PORT=80
-      - KG_BASE_URL=http://34.70.98.82:80/
-      - PROJECT_ID=frances-365422
-      - CLUSTER_NAME=cluster-8753
+      - KG_BASE_URL=your_fuseki_server_url
+      - PROJECT_ID=your_google_cloud_project_id
+      - CLUSTER_NAME=your_dataproc_cluster_name
       - CLUSTER_REGION=us-central1
       - GOOGLE_APPLICATION_CREDENTIALS=/gcp/creds.json
     depends_on:
