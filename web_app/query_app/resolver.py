@@ -45,8 +45,8 @@ def get_es():
     if elasticsearch is not None:
         return elasticsearch
     elasticsearch = Elasticsearch(
-        "https://83a1253d6aac48278867d36eed60b642.us-central1.gcp.cloud.es.io:443",
-        api_key="cmtBajU0MEJiRUoteDA3bmtubEE6bHpVYzFlSWNUSXFWcG8tbHFnOUFxQQ=="
+        "your_elasitc_host",
+        api_key="your_api_key"
     )
     return elasticsearch
 
