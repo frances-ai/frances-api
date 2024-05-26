@@ -1,14 +1,12 @@
 from SPARQLWrapper import SPARQLWrapper, JSON
-from web_app.query_app.controller.utils import get_kg_url
-from web_app.query_app.resolver import get_hto_kg_endpoint
+from .utils import get_kg_url
+from ..resolver import get_hto_kg_endpoint
 from rdflib import Namespace
 
 hto = Namespace("https://w3id.org/hto#")
 hto_endpoint = get_hto_kg_endpoint()
 
-eb_url = get_kg_url('total_eb')
-
-sparqlW = SPARQLWrapper(eb_url)
+sparqlW = SPARQLWrapper(hto_endpoint)
 
 
 def get_editor():
@@ -80,29 +78,6 @@ def describe_resource(uri=None, kg_type="total_eb"):
     return clear_r
 
 
-def get_vol_by_vol_uri(uri):
-    sparql = SPARQLWrapper(eb_url)
-    query = """
-    PREFIX eb: <https://w3id.org/eb#>
-    SELECT ?vnum ?letters ?part WHERE {
-       %s eb:number ?vnum ;
-          eb:letters ?letters .
-           OPTIONAL {%s eb:part ?part; }
-       
-    
-    } """ % (uri, uri)
-
-    sparql.setQuery(query)
-    sparql.setReturnFormat(JSON)
-    results = sparql.query().convert()
-    r = results["results"]["bindings"][0]
-    if "part" in r:
-        data = r["vnum"]["value"] + " " + r["letters"]["value"] + "Part " + r["part"]["value"]
-    else:
-        data = r["vnum"]["value"] + " " + r["letters"]["value"]
-    return data
-
-
 def get_editions():
     sparql = SPARQLWrapper(hto_endpoint)
     # Title: Edition 1,1771
@@ -166,30 +141,54 @@ def get_series(kg_type):
     return clean_r
 
 
-def get_volumes(uri):
-    sparql = SPARQLWrapper(hto_endpoint)
-    query = """
-    PREFIX hto: <https://w3id.org/hto#>
-    SELECT * WHERE {
-       %s hto:hadMember ?v .
-       ?v hto:number ?vnum ; 
-          hto:title ?title.
-    } 
-    """ % (uri)
-    sparql.setQuery(query)
-    sparql.setReturnFormat(JSON)
-    results = sparql.query().convert()
-    clean_r = []
-    for r in results["results"]["bindings"]:
-        uri = r["v"]["value"]
-        number = r["vnum"]["value"]
-        title = r["title"]["value"]
-        name = title[title.find("Volume"):]
-        clean_r.append({
-            "uri": uri,
-            "number": number,
-            "name": name
-        })
+def get_volumes(uri, kg_type="hto"):
+    if kg_type == "hto":
+        sparql = SPARQLWrapper(hto_endpoint)
+        query = """
+        PREFIX hto: <https://w3id.org/hto#>
+        SELECT * WHERE {
+           %s hto:hadMember ?v .
+           ?v hto:number ?vnum ; 
+              hto:title ?title.
+        } 
+        """ % (uri)
+        sparql.setQuery(query)
+        sparql.setReturnFormat(JSON)
+        results = sparql.query().convert()
+        clean_r = []
+        for r in results["results"]["bindings"]:
+            uri = r["v"]["value"]
+            number = r["vnum"]["value"]
+            title = r["title"]["value"]
+            name = title[title.find("Volume"):]
+            clean_r.append({
+                "uri": uri,
+                "number": number,
+                "name": name
+            })
+    else:
+        sparql = SPARQLWrapper(get_kg_url(kg_type))
+        query = """
+                PREFIX nls: <https://w3id.org/nls#>
+                SELECT * WHERE {
+                   %s nls:hasPart ?v .
+                   ?v nls:number ?vnum ; 
+                      nls:title ?title.
+                } 
+                """ % (uri)
+        sparql.setQuery(query)
+        sparql.setReturnFormat(JSON)
+        results = sparql.query().convert()
+        clean_r = []
+        for r in results["results"]["bindings"]:
+            uri = r["v"]["value"]
+            number = r["vnum"]["value"]
+            title = r["title"]["value"]
+            clean_r.append({
+                "uri": uri,
+                "number": number,
+                "name": title
+            })
     return clean_r
 
 
@@ -314,36 +313,64 @@ def get_serie_details(kg_type, uri=None):
     return clean_r
 
 
-def get_volume_details(uri):
-    sparql = SPARQLWrapper(hto_endpoint)
-    query = """
-                PREFIX hto: <https://w3id.org/hto#>
-                SELECT ?num ?title ?part ?volumeId ?permanentURL ?numberOfPages ?letters WHERE {
-                   %s hto:number ?num;
-                      hto:title ?title;
-                      hto:volumeId ?volumeId;
-                      hto:permanentURL ?permanentURL;
-                      hto:numberOfPages ?numberOfPages;
-                      hto:letters ?letters.
-                   OPTIONAL {%s hto:part ?part. }      
-                }
-                """ % (uri, uri)
+def get_volume_details(uri, kg_type="hto"):
+    if kg_type == "hto":
+        sparql = SPARQLWrapper(hto_endpoint)
+        query = """
+                    PREFIX hto: <https://w3id.org/hto#>
+                    SELECT ?num ?title ?part ?volumeId ?permanentURL ?numberOfPages ?letters WHERE {
+                       %s hto:number ?num;
+                          hto:title ?title;
+                          hto:volumeId ?volumeId;
+                          hto:permanentURL ?permanentURL;
+                          hto:numberOfPages ?numberOfPages;
+                          hto:letters ?letters.
+                       OPTIONAL {%s hto:part ?part. }      
+                    }
+                    """ % (uri, uri)
 
-    sparql.setQuery(query)
-    sparql.setReturnFormat(JSON)
-    results = sparql.query().convert()
-    clean_r = {}
-    for r in results["results"]["bindings"]:
-        clean_r["number"] = r["num"]["value"]
-        clean_r["uri"] = uri
-        clean_r["title"] = r["title"]["value"]
-        clean_r["id"] = r["volumeId"]["value"]
-        if "letters" in r:
-            clean_r["letters"] = r["letters"]["value"]
-        if "part" in r:
-            clean_r["part"] = r["part"]["value"]
-        clean_r["permanentURL"] = r["permanentURL"]["value"]
-        clean_r["numOfPages"] = r["numberOfPages"]["value"]
+        sparql.setQuery(query)
+        sparql.setReturnFormat(JSON)
+        results = sparql.query().convert()
+        clean_r = {}
+        for r in results["results"]["bindings"]:
+            clean_r["number"] = r["num"]["value"]
+            clean_r["uri"] = uri
+            clean_r["title"] = r["title"]["value"]
+            clean_r["id"] = r["volumeId"]["value"]
+            if "letters" in r:
+                clean_r["letters"] = r["letters"]["value"]
+            if "part" in r:
+                clean_r["part"] = r["part"]["value"]
+            clean_r["permanentURL"] = r["permanentURL"]["value"]
+            clean_r["numOfPages"] = r["numberOfPages"]["value"]
+    else:
+        sparql = SPARQLWrapper(get_kg_url(kg_type))
+        query = """
+                            PREFIX nls: <https://w3id.org/nls#>
+                            SELECT ?num ?title ?part ?volumeId ?permanentURL ?numberOfPages ?letters WHERE {
+                               %s nls:number ?num;
+                                  nls:title ?title;
+                                  nls:volumeId ?volumeId;
+                                  nls:permanentURL ?permanentURL;
+                                  nls:numberOfPages ?numberOfPages;
+                               OPTIONAL {%s nls:part ?part. }      
+                            }
+                            """ % (uri, uri)
+
+        sparql.setQuery(query)
+        sparql.setReturnFormat(JSON)
+        results = sparql.query().convert()
+        clean_r = {}
+        for r in results["results"]["bindings"]:
+            clean_r["number"] = r["num"]["value"]
+            clean_r["uri"] = uri
+            clean_r["title"] = r["title"]["value"]
+            clean_r["id"] = r["volumeId"]["value"]
+            if "part" in r:
+                clean_r["part"] = r["part"]["value"]
+            clean_r["permanentURL"] = r["permanentURL"]["value"]
+            clean_r["numOfPages"] = r["numberOfPages"]["value"]
     return clean_r
 
 
@@ -470,7 +497,7 @@ def get_eb_vol_statistics(uri):
 
     ###### NUM DIST ARTICLES
     query2 = """
-         PREFIX eb: <https://w3id.org/eb#>
+         PREFIX hto: <https://w3id.org/hto#>
          PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
          SELECT (count (DISTINCT ?a) as ?count)
          WHERE {
@@ -489,7 +516,7 @@ def get_eb_vol_statistics(uri):
 
     ###### NUM DIST TOPICS
     query3 = """
-       PREFIX eb: <https://w3id.org/eb#>
+       PREFIX hto: <https://w3id.org/hto#>
        PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
        SELECT (count (DISTINCT ?a) as ?count)
        WHERE {
@@ -508,45 +535,6 @@ def get_eb_vol_statistics(uri):
     return data
 
 
-def get_document(uri):
-    sparql = SPARQLWrapper(eb_url)
-    query = """
-    PREFIX eb: <https://w3id.org/eb#>
-    PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
-    SELECT ?definition ?term ?year ?enum ?vnum
-        WHERE {{
-            %s a eb:Article ;
-               eb:name ?term ;
-               eb:definition ?definition . 
-            ?v eb:hasPart %s.
-            ?v eb:number ?vnum.
-            ?e eb:hasPart ?v.
-            ?e eb:publicationYear ?year.
-            ?e eb:number ?enum.
-            }
-            UNION {
-            %s a eb:Topic ;
-              eb:name ?term ; 
-              eb:definition ?definition . 
-            ?v eb:hasPart %s.
-            ?v eb:number ?vnum.
-            ?e eb:hasPart ?v.
-            ?e eb:publicationYear ?year.
-            ?e eb:number ?enum.
-            }
-       } 
-    """ % (uri, uri, uri, uri)
-    sparql.setQuery(query)
-    sparql.setReturnFormat(JSON)
-    results = sparql.query().convert()
-    term = results["results"]["bindings"][0]["term"]["value"]
-    definition = results["results"]["bindings"][0]["definition"]["value"]
-    enum = results["results"]["bindings"][0]["enum"]["value"]
-    year = results["results"]["bindings"][0]["year"]["value"]
-    vnum = results["results"]["bindings"][0]["vnum"]["value"]
-    return term, definition, enum, year, vnum
-
-
 def get_nls_document_page_image_url(page_permanent_url):
     if page_permanent_url is None:
         return None
@@ -554,8 +542,14 @@ def get_nls_document_page_image_url(page_permanent_url):
     page_id = page_permanent_url.split("/")[-1]
     # construct the image url
     tmp_id = str(int(page_id) + 2)
-    # https://deriv.nls.uk/dcn30/<first 4 digits of the tmp_id>/<second 4 digits of the tmp_id>/<tmp_id>.30.jpg
-    page_image_url = f"https://deriv.nls.uk/dcn30/{tmp_id[:4]}/{tmp_id[4:8]}/{tmp_id}.30.jpg"
+
+    if 97343436 <= int(page_id) <= 97504499:
+        # gazetteers of scotland
+        # https://deriv.nls.uk/dcn30/<first 4 digits of the tmp_id>/<tmp_id>.30.jpg
+        page_image_url = f"https://deriv.nls.uk/dcn30/{tmp_id[:4]}/{tmp_id}.30.jpg"
+    else:
+        # https://deriv.nls.uk/dcn30/<first 4 digits of the tmp_id>/<second 4 digits of the tmp_id>/<tmp_id>.30.jpg
+        page_image_url = f"https://deriv.nls.uk/dcn30/{tmp_id[:4]}/{tmp_id[4:8]}/{tmp_id}.30.jpg"
     return page_image_url
 
 
@@ -571,7 +565,7 @@ def get_page_display_info(page_uri):
                     hto:number ?number;
                     hto:permanentURL ?permanentURL.}
             """ % page_uri
-    print(query)
+    #print(query)
     hto_sparql.setQuery(query)
     try:
         ret = hto_sparql.queryAndConvert()
@@ -586,7 +580,7 @@ def get_page_display_info(page_uri):
     except Exception as e:
         print(e)
 
-    print(result)
+    #print(result)
     return result
 
 
@@ -616,7 +610,7 @@ def get_page_info(page_uri):
                     hto:name ?collection_name.   
             }
             """ % (page_uri, page_uri, page_uri)
-    print(query)
+    #print(query)
     hto_sparql.setQuery(query)
     try:
         ret = hto_sparql.queryAndConvert()
@@ -651,7 +645,7 @@ def get_page_info(page_uri):
         print(e)
     contents = get_page_content(page_uri)
     result["contents"] = contents
-    print(result)
+    #print(result)
     return result
 
 
@@ -669,7 +663,7 @@ def get_page_content(page_uri):
                     hto:hasTextQuality ?textQuality.
                 }
             """ % page_uri
-    print(query)
+    #print(query)
     hto_sparql.setQuery(query)
     try:
         ret = hto_sparql.queryAndConvert()
@@ -682,7 +676,7 @@ def get_page_content(page_uri):
     except Exception as e:
         print(e)
 
-    print(result)
+    #print(result)
     return result
 
 
@@ -701,7 +695,7 @@ def get_term_definitions(term_uri):
                     hto:hasTextQuality ?textQuality.
                 }
             """ % term_uri
-    print(query)
+    #print(query)
     hto_sparql.setQuery(query)
     try:
         ret = hto_sparql.queryAndConvert()
@@ -714,7 +708,7 @@ def get_term_definitions(term_uri):
     except Exception as e:
         print(e)
 
-    print(result)
+    #print(result)
     return result
 
 
@@ -788,7 +782,7 @@ def get_term_info(term_uri):
                 hto:name ?collection_name.
             }
         """ % (term_uri, term_uri)
-    print(query)
+    #print(query)
     hto_sparql.setQuery(query)
     try:
         ret = hto_sparql.queryAndConvert()
@@ -842,7 +836,7 @@ def get_term_info(term_uri):
 
     descriptions = get_term_definitions(term_uri)
     result["descriptions"] = descriptions
-    print(result)
+    #print(result)
     return result
 
 

@@ -20,13 +20,12 @@ def generate_bucket_name():
 
 
 class DataprocDefoeService:
-    preComputedJobID = []
 
     @staticmethod
     def get_pre_computed_queries():
         return {
-            "total_eb_hq_publication_normalized": "precomputedResult/total_eb_hq_publication_normalized.yml",
-            "total_eb_publication_normalized": "precomputedResult/total_eb_publication_normalized.yml",
+            "ebo_total_neuspell_publication_normalized": "precomputedResult/ebo_total_neuspell_publication_normalized.yml",
+            "ebo_total_publication_normalized": "precomputedResult/ebo_total_publication_normalized.yml",
             "chapbooks_scotland_publication_normalized": "precomputedResult"
                                                          "/chapbooks_scotland_publication_normalized.yml",
             "gazetteers_scotland_publication_normalized": "precomputedResult"
@@ -83,7 +82,6 @@ class DataprocDefoeService:
 
     def submit_job(self, job_id, model_name, query_name, endpoint, query_config, result_file_path):
         if (query_config['kg_type'] + '_' + query_name) in DataprocDefoeService.get_pre_computed_queries():
-            DataprocDefoeService.preComputedJobID.append(job_id)
             return job_id
 
         config_args = query_config_to_args(query_config)
@@ -101,10 +99,10 @@ class DataprocDefoeService:
                 "python_file_uris": self.python_file_uris,
                 "args": args,
                 "properties": {
-                    "spark.executor.cores": "4",
-                    "spark.executor.instances": "4",
+                    "spark.executor.cores": "8",
+                    "spark.executor.instances": "34",
                     "spark.dynamicAllocation.enabled": "false",
-                    "spark.cores.max": "8"
+                    "spark.cores.max": "128"
                 }
             },
         }
@@ -120,9 +118,8 @@ class DataprocDefoeService:
         except Exception as E:
             raise Exception(E)
 
-    def get_status(self, job_id):
-        if job_id in DataprocDefoeService.preComputedJobID:
-            DataprocDefoeService.preComputedJobID.remove(job_id)
+    def get_status(self, job_id, is_pre_computed=False):
+        if is_pre_computed:
             return {
                 "state": "DONE"
             }
@@ -152,7 +149,7 @@ class DataprocDefoeService:
 
 if __name__ == "__main__":
     main_python_file_uri = "gs://frances2023/run_query.py"
-    python_file_uris = ["gs://frances2023/defoe-v2.zip"]
+    python_file_uris = ["file:///home/defoe.zip"]
     cluster = {
         "cluster_name": "cluster-8753",
         "project_id": "frances-365422",
@@ -161,21 +158,15 @@ if __name__ == "__main__":
     service = DataprocDefoeService(main_python_file_uri, python_file_uris, cluster)
 
     model_name = "sparql"
-    query_name = "frequency_keysearch_by_year"
-    endpoint = "http://www.frances-ai.com:3030/total_eb/sparql"
+    query_name = "publication_normalized"
+    endpoint = "http://query.frances-ai.com/ebo_total_hq/sparql"
     query_config = {
-        "kg_type": "total_eb",
-        "start_year": "1768",
-        "hit_count": "term",
-        "end_year": "1800",
-        "preprocess": "lemmatize",
-        "data": "commodities.txt"
+        "kg_type": "ebo_total_hq"
     }
-    result_file_path = "frequency_keysearch_by_year_commodities.yml"
-    job_id = "new_defoe_test9"
+    result_file_path = "ebo_total_hq_publication_normalized.yml"
+    job_id = "ebo_total_hq_publication_normalized4"
 
     service.submit_job(job_id, model_name, query_name, endpoint, query_config, result_file_path)
 
     # another_service = DefoeService(main_python_file_uri, python_file_uris, cluster)
     # print(DefoeService.preComputedJobID)
-    print()

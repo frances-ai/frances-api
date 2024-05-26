@@ -1,4 +1,4 @@
-from web_app.query_app.resolver import get_es
+from ..resolver import get_es
 
 
 def search(query):
@@ -19,7 +19,7 @@ def search(query):
     """
     elasticsearch = get_es()
 
-    index_names = query.get('index_names', 'eb,chapbooks')
+    index_names = query.get('index_names', 'hto_*')
 
     sort_field = query.get('sort', None)
     output_fields = ["collection", "vol_title", "name", "note", "alter_names", "genre", "print_location",
@@ -160,14 +160,14 @@ def search(query):
                 }
             }
     # Perform the search
-    print(body)
+    #print(body)
     response = elasticsearch.search(index=index_names, body=body)
     return response
 
 
 def get_term_info(term_uri):
     elasticsearch = get_es()
-    index_name = 'eb'
+    index_name = 'hto_eb'
     response = elasticsearch.get(index=index_name, id=term_uri)
     result = response['_source']
     return result
@@ -206,7 +206,7 @@ def exact_knn_search(query):
     :return: elastic search result
     """
     elasticsearch = get_es()
-    index_name = "eb"
+    index_name = "hto_eb"
     body = {
         "size": query.get('size', 20),
         "from": query.get('from', 0),

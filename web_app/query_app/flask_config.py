@@ -9,7 +9,7 @@ from .resolver import get_front_env, get_file_storage_mode, kg_base_url, get_dat
 
 
 class DefaultFlaskConfig:
-    DEBUG = True
+    DEBUG = False
 
     BASE_DIR = Path(os.path.abspath(os.path.dirname(__file__)))
     SECRET_KEY = os.urandom(64)
@@ -50,8 +50,6 @@ class DefaultFlaskConfig:
 
     IMAGES_FOLDER = str(WEB_APP_DIR) + "/images"
 
-    MODELS_FOLDER = str(WEB_APP_DIR) + "/models"
-
     FILE_STORAGE_MODE = get_file_storage_mode()
 
     if FILE_STORAGE_MODE == "gs":
@@ -71,7 +69,7 @@ class DefaultFlaskConfig:
 
     ALLOWED_EXTENSIONS = {'txt', 'yaml', 'yml'}
 
-    SENDGRID_API_KEY = "your api key"
+    SENDGRID_API_KEY = "api_key"
     ADMIN_EMAIL = "damonyu97@gmail.com"
 
     # OpenAPI

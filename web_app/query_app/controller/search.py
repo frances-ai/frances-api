@@ -1,13 +1,13 @@
 from http import HTTPStatus
 
-from flask import Blueprint, request, jsonify
+from flask import Blueprint, request, jsonify, current_app
 from sklearn.metrics.pairwise import cosine_similarity
 from datetime import datetime
 
 from ..core import limiter
-from web_app.query_app.service import search_service
-from web_app.query_app.controller import sparql_queries
-from web_app.query_app.controller.utils import normalize_text, get_word_frequencies
+from ..service import search_service
+from . import sparql_queries
+from .utils import normalize_text, get_word_frequencies
 
 search = Blueprint("search", __name__, url_prefix="/api/v1/search")
 
@@ -45,8 +45,9 @@ def text_search():
         query_params["search_field"] = 'name'
 
     # Call the search service with the constructed query dictionary
+    current_app.logger.info(f"search with options: {query_params}")
     try:
-        print(query_params)
+        #print(query_params)
         results = search_service.search(query_params)
         return jsonify(results.body), HTTPStatus.OK
     except Exception as e:
@@ -59,7 +60,8 @@ def text_search():
 def retrieve_term_info():
     term_path = request.args.get('term_path', type=str)
     term_uri = "https://w3id.org/hto/" + term_path
-    print(term_path)
+    current_app.logger.info(f"retrieve term info for {term_uri}")
+    #print(term_path)
     term_info = sparql_queries.get_term_info(term_uri)
     es_term_info = search_service.get_term_info(term_uri)
     term_info["concept_uri"] = es_term_info["concept_uri"]
@@ -75,7 +77,7 @@ def retrieve_term_info():
 @limiter.limit("30/minute")  # 30 requests per minute
 def retrieve_similar_terms():
     term_uri = request.json.get("term_uri")
-    print(term_uri)
+    #print(term_uri)
     term_info = search_service.get_term_info(term_uri)
     # get the top 20 most similar terms, expect itself.
     query = {
@@ -102,7 +104,7 @@ def retrieve_similar_terms():
 def retrieve_page_display_info():
     page_path = request.args.get('page_path', type=str)
     page_uri = "<https://w3id.org/hto/" + page_path + ">"
-    print(page_path)
+    #print(page_path)
     page_info = sparql_queries.get_page_display_info(page_uri)
     return jsonify(page_info), HTTPStatus.OK
 
@@ -112,7 +114,8 @@ def retrieve_page_display_info():
 def retrieve_page_info():
     page_path = request.args.get('page_path', type=str)
     page_uri = "<https://w3id.org/hto/" + page_path + ">"
-    print(page_path)
+    current_app.logger.info(f"retrieve page info for {page_uri}")
+    #print(page_path)
     page_info = sparql_queries.get_page_info(page_uri)
     return jsonify(page_info), HTTPStatus.OK
 
@@ -121,7 +124,7 @@ def retrieve_page_info():
 @limiter.limit("30/minute")  # 30 requests per minute
 def retrieve_similar_term_descriptions():
     term_uri = request.json.get("term_uri")
-    print(term_uri)
+    #print(term_uri)
     term_info = search_service.get_term_info(term_uri)
 
     # get the top 20 most similar terms, since we want itself to be included in the final result, we will check top 21

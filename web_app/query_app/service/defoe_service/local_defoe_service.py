@@ -1,7 +1,7 @@
 import grpc
 
-from web_app.defoe_service.defoe_pb2 import JobSubmitRequest, JobRequest
-from web_app.defoe_service.defoe_pb2_grpc import DefoeStub
+from .defoe_pb2 import JobSubmitRequest, JobRequest
+from .defoe_pb2_grpc import DefoeStub
 
 
 class LocalDefoeService:

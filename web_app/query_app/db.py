@@ -39,13 +39,14 @@ def record_to_defoe_query_task(record):
 
 class Database:
     def __init__(self, config):
+        print(config["host"])
         self.db = psycopg2.connect(
             host=config["host"],
             port="5432",
             user=config["user"],
             password=config["password"]
         )
-        # self.create_tables()
+        self.create_tables()
         # self.update_database()
 
     def rollback(self):
@@ -126,6 +127,21 @@ class Database:
         self.db.commit()
         return
 
+    def delete_defoe_query_tasks_by_taskIDs(self, taskIDs):
+        placeholders = ', '.join(['%s'] * len(taskIDs))
+        sql = f"DELETE FROM DefoeQueryTasks WHERE taskID IN ({placeholders});"
+        cursor = self.db.cursor()
+        cursor.execute(sql, taskIDs)
+        self.db.commit()
+        return
+
+    def delete_defoe_query_task_by_taskID(self, taskID):
+        sql = "DELETE FROM DefoeQueryTasks WHERE taskID=%s;"
+        cursor = self.db.cursor()
+        cursor.execute(sql, (taskID))
+        self.db.commit()
+        return
+
     def update_defoe_query_task(self, task):
         sql = "UPDATE DefoeQueryTasks SET progress=%s, state=%s, errorMsg=%s WHERE taskID=%s;"
         vals = (task.progress, task.state, task.errorMsg, task.id)
@@ -199,8 +215,6 @@ class Database:
         cursor.execute(sql, tuple(value for key, value in filters.items()))
 
         records = cursor.fetchall()
-        if len(records) == 0:
-            return None
         results = []
         for record in records:
             results.append(record_to_defoe_query_task(record))
