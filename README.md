@@ -25,16 +25,6 @@ For the source code, run:
 git clone https://github.com/frances-ai/frances-api
 ```
 
-For the knowledge graphs, put them under folder `frances-api/knowledge_graphs` after downloading from here: 
-* [EB-KG](https://zenodo.org/record/6673897)
-* [ChapbooksScotland-KG](https://zenodo.org/record/6696686)
-* [LadiesDebating-KG](https://zenodo.org/record/6686596)
-* [GazetteersScotland-KG](https://zenodo.org/record/6686829)
-
-
-For the pre-computed NLP results, embedding and models, download from here: [models](https://universityofstandrews907-my.sharepoint.com/:f:/g/personal/ly40_st-andrews_ac_uk/Eq-ex5z-9atOvjw1LuFri6wBIu8TdW7uLVK-QXgAu2GJQg?e=hHPhGq). 
-Put them under the folder `frances-api/web_app/models`
-
 ### Install Python3.9
 
 See instruction here: [python3.9 install](https://www.python.org/downloads/)
@@ -42,7 +32,7 @@ See instruction here: [python3.9 install](https://www.python.org/downloads/)
 ### Install dependencies
 In the `frances-api` directory, run
 ```bash
-pip install -r webb_app/requirements.txt
+pip install -r web_app/requirements.txt
 ```
 
 ### Run defoe grpc server
@@ -52,16 +42,19 @@ see instructions here: [defoe](https://github.com/frances-ai/defoe_lib/blob/main
 ### Install Docker, run postgresql and fuseki using docker
 
 see instructions here: [docker](https://docs.docker.com/engine/install/)
+
+The required knowledge graphs can be generated from [Knowledge Graph Generator](), these knowledge graphs should be 
+to fuseki server, see [stain/fuseki]()
  
 start postgresql database and fuseki server using docker compose. In the `frances-api` directory, run
 ```bash
 docker compose -f docker-compose.dev.yml up
 ```
 
-### Upload knowledge graphs and start the backend
-In the `frances-api` directory, run
+###  start the backend
+In the `frances-api/web_app` directory, run
 ```bash
-sh start.sh
+gunicorn -b :5000 'query_app:create_app()'
 ```
 
 
@@ -135,12 +128,8 @@ After this, you can run this backend similar to above [local development process
 ## Cloud Deployment
 
 ### Build docker image for backend:
-Update the `frances-api/install_graph.sh`:
-```bash
-fuseki_url="http://fuseki:3030"
-```
 
-This image will also automatically upload knowledge graphs. To support multiple architectures, run the following command in `frances-api` directory to build the image:
+To support multiple architectures, run the following command in `frances-api` directory to build the image:
 ```bash
 docker buildx build --platform <linux/arm/v7,linux/arm64/v8,>linux/amd64 --tag <docker username>/frances-api:latest --push .
 ```
