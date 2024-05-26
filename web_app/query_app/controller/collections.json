@@ -1,6 +1,6 @@
 [
   {
-    "id": 1,
+    "uri": "https://w3id.org/hto/WorkCollection/EncyclopaediaBritannica",
     "name": "Encyclopaedia Britannica",
     "cover_image_name_small": "Encyclopaedia-Britannica-crop-768x512.jpg",
     "cover_image_name_origin": "Encyclopaedia-Britannica-first-edition-768x1050.jpg",
@@ -15,7 +15,7 @@
     "source": "https://data.nls.uk/data/digitised-collections/encyclopaedia-britannica/"
   },
   {
-    "id": 2,
+    "uri": "https://w3id.org/hto/WorkCollection/ChapbooksOfScotland",
     "name": "Chapbooks printed in Scotland",
     "cover_image_name_small": "chapbooks-crop-768x512.jpg",
     "cover_image_name_origin": "chapbooks-582x1024.jpg",
@@ -29,7 +29,7 @@
     "source": "https://data.nls.uk/data/digitised-collections/chapbooks-printed-in-scotland/"
   },
   {
-    "id": 3,
+    "uri": "https://w3id.org/hto/WorkCollection/GazetteersOfScotland",
     "name": "Gazetteers of Scotland",
     "cover_image_name_small": "Gazetteers-crop-768x512.jpg",
     "cover_image_name_origin": "Gazetteers-768x1239.jpg",
@@ -44,7 +44,7 @@
     "source": "https://data.nls.uk/data/digitised-collections/gazetteers-of-scotland/"
   },
   {
-    "id": 4,
+    "uri": "https://w3id.org/hto/WorkCollection/LadiesEdinburghDebatingSociety",
     "name": "Ladies’ Edinburgh Debating Society",
     "cover_image_name_small": "Ladies-Society-crop-768x512.jpg",
     "cover_image_name_origin": "Ladies-Debating-Society.jpg",

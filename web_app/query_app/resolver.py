@@ -2,14 +2,13 @@ import logging
 import os
 
 from elasticsearch import Elasticsearch
-from flask import jsonify
 from werkzeug.security import generate_password_hash
 
 from .db import Database, User
 
-from ..defoe_service.dataproc_defoe_service import DataprocDefoeService
-from ..defoe_service.local_defoe_service import LocalDefoeService
-from ..google_cloud.google_cloud_storage import GoogleCloudStorage
+from .service.defoe_service.dataproc_defoe_service import DataprocDefoeService
+from .service.defoe_service.local_defoe_service import LocalDefoeService
+from .google_cloud.google_cloud_storage import GoogleCloudStorage
 
 HTTP_PROTOCOL = "http://"
 
@@ -86,6 +85,7 @@ def get_database():
         "password": DATABASE_PASSWORD
     }
     if MODE == "deploy":
+        logging.info("deploy")
         database_config["host"] = "database"
     database = Database(database_config)
     add_init_user(database)

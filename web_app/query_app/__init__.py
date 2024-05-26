@@ -2,6 +2,8 @@
 # -*- coding: utf-8 -*-
 
 """Make the Flask app available."""
+import logging
+
 from flasgger import Swagger
 from flask import Flask
 from flask_cors import CORS
@@ -20,7 +22,9 @@ from .flask_config import DefaultFlaskConfig
 def create_app(test_config=None):
     app = Flask(__name__, instance_relative_config=True)
     limiter.init_app(app)
-
+    gunicorn_logger = logging.getLogger('gunicorn.error')
+    app.logger.handlers = gunicorn_logger.handlers
+    app.logger.setLevel(gunicorn_logger.level)
     if test_config is None:
         app.config.from_object(DefaultFlaskConfig())
     else:

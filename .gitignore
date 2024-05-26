@@ -15,5 +15,8 @@ node_modules
 /presentation/
 /knowledge_graphs/
 /postgres/
-/web_app/query_app/upload_folder
-/web_app/query_app/defoe_results
+/web_app/query_app/upload_folder/
+/web_app/query_app/defoe_results/
+/web_app/defoe_results/
+/web_app/upload_folder/
+/archives/
