@@ -4,7 +4,7 @@ This repository is the backend of  an improved version of [frances](https://gith
 
 This project contains a flask backend (this repository), [react frontend](https://github.com/frances-ai/frances-frontend), [defoe](https://github.com/frances-ai/defoe_lib)
 
-User can access frances here: [frances](http://35.228.63.82:3000)
+User can access frances here: [frances](http://www.frances-ai.com)
 
 ---
 
