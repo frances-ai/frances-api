@@ -836,8 +836,27 @@ def get_term_info(term_uri):
 
     descriptions = get_term_definitions(term_uri)
     result["descriptions"] = descriptions
-    #print(result)
+    print(result)
     return result
+
+
+def get_triples(entry_uri):
+    if entry_uri is None:
+        return None
+    entry_uri = "<" + entry_uri + ">"
+    hto_sparql = SPARQLWrapper(hto_endpoint)
+    hto_sparql.setReturnFormat(JSON)
+    hto_sparql.setQuery("""
+        SELECT * WHERE {
+            %s ?pre ?obj
+        }
+        """ % entry_uri)
+    try:
+        ret = hto_sparql.queryAndConvert()
+        return ret["results"]["bindings"]
+    except Exception as e:
+        print(e)
+        return None
 
 
 if __name__ == "__main__":

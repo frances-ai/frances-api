@@ -86,8 +86,8 @@ def dict_defoe_queries():
     defoe_q["snippet_keysearch_by_year"] = "snippet_keysearch_by_year"
     defoe_q["fulltext_keysearch_by_year"] = "fulltext_keysearch_by_year"
     defoe_q["geoparser_by_year"] = "geoparser_by_year"
-    defoe_q["frequency-distribution"] = "frequency-distribution"
-    defoe_q["lexicon-diversity"] = "lexicon-diversity"
+    defoe_q["frequency_distribution"] = "frequency_distribution"
+    defoe_q["lexicon_diversity"] = "lexicon_diversity"
     defoe_q["person_entity_recognition"] = "person_entity_recognition"
     return defoe_q
 

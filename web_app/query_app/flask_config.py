@@ -5,7 +5,8 @@ from datetime import timedelta
 from rdflib.namespace import Namespace, RDF, RDFS, OWL, XSD
 from rdflib.namespace import SKOS, DOAP, FOAF, DC, DCTERMS
 
-from .resolver import get_front_env, get_file_storage_mode, kg_base_url, get_database, get_defoe_service, get_google_cloud_storage
+from .resolver import get_front_env, get_file_storage_mode, kg_base_url, get_database, \
+    get_defoe_service, get_google_cloud_storage, get_hto_kg_endpoint
 
 
 class DefaultFlaskConfig:
@@ -45,6 +46,8 @@ class DefaultFlaskConfig:
         'Ladies’ Edinburgh Debating Society': {'NLS': 'nlso_ladies'},
         'Gazetteers of Scotland': {'NLS': 'nlso_gazetteers_scotland'}
     }
+
+    HTO_ENDPOINT = get_hto_kg_endpoint()
 
     CONFIG_FOLDER = str(BASE_DIR) + "/config_folder"
 

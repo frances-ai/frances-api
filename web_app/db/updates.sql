@@ -3,8 +3,8 @@ BEGIN
     IF NOT EXISTS (
         SELECT FROM information_schema.columns
         WHERE table_name = 'DefoeQueryConfigs'
-        AND column_name = 'sourceProvider'
+        AND column_name = 'level'
     ) THEN
-        ALTER TABLE DefoeQueryConfigs ADD COLUMN sourceProvider VARCHAR(20) NOT NULL DEFAULT 'NLS';
+        ALTER TABLE DefoeQueryConfigs ADD COLUMN level VARCHAR(20);
     END IF;
 END$$;

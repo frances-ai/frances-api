@@ -274,3 +274,10 @@ def get_term_records_by_concept_uri():
         })
 
     return jsonify(results), HTTPStatus.OK
+
+
+@search.post("/hto_triples")
+@limiter.limit("30/minute")  # 30 requests per minute
+def get_hto_triples():
+    entry_uri = request.json.get("entry_uri")
+    return jsonify(sparql_queries.get_triples(entry_uri)), HTTPStatus.OK
