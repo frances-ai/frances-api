@@ -1,13 +1,14 @@
 import json
 import os.path
 from http import HTTPStatus
+from io import BytesIO
 from os.path import dirname, abspath, join
 
+import yaml
 from flask import Blueprint, jsonify, request, send_file
 
 from .sparql_queries import *
 from ..flask_config import DefaultFlaskConfig
-from .utils import get_kg_type
 
 collection = Blueprint("collection", __name__, url_prefix="/api/v1/collection")
 image_path = DefaultFlaskConfig.IMAGES_FOLDER
@@ -57,11 +58,10 @@ def eb_edition_list():
     return jsonify(get_editions()), HTTPStatus.OK
 
 
-@collection.route("/nls_serie/list", methods=['GET'])
+@collection.route("/nls_series/list", methods=['GET'])
 def nls_serie_list():
     collection_name = request.args.get("collection")
-    kg_type = get_kg_type(collection_name)
-    return jsonify(get_series(kg_type)), HTTPStatus.OK
+    return jsonify(get_series(collection_name)), HTTPStatus.OK
 
 
 @collection.route("/eb_edition", methods=['GET'])
@@ -71,40 +71,76 @@ def eb_edition():
     return jsonify(get_edition_details(edition_uri)), HTTPStatus.OK
 
 
-@collection.route("/nls_serie", methods=['GET'])
-def nls_serie():
-    collection_name = request.args.get("collection")
-    kg_type = get_kg_type(collection_name)
-    serie_uri = request.args.get("uri")
-    serie_uri = "<" + serie_uri + ">"
-    return jsonify(get_serie_details(kg_type, serie_uri)), HTTPStatus.OK
+@collection.route("/nls_series", methods=['GET'])
+def nls_series():
+    series_uri = request.args.get("uri")
+    series_uri = "<" + series_uri + ">"
+    return jsonify(get_series_details(series_uri)), HTTPStatus.OK
 
 
 @collection.get("volume/list")
 def volume_list():
-    collection_name = request.args.get("collection")
-    kg_type = get_kg_type(collection_name)
-    if "ebo" in kg_type:
-        kg_type = "hto"
-    edition_uri = request.args.get("uri")
-    edition_uri = "<" + edition_uri + ">"
-    return jsonify(get_volumes(edition_uri, kg_type)), HTTPStatus.OK
+    edition_series_uri = request.args.get("uri")
+    edition_series_uri = "<" + edition_series_uri + ">"
+    return jsonify(get_volumes(edition_series_uri)), HTTPStatus.OK
 
 
 @collection.get("/volume")
 def volume():
     collection_name = request.args.get("collection")
-    kg_type = get_kg_type(collection_name)
     volume_uri = request.args.get("uri")
-    volume_uri = "<" + volume_uri + ">"
-    if "ebo" in kg_type:
-        kg_type = "hto"
-    if kg_type == "hto":
+    if collection_name == 'Encyclopaedia Britannica':
         return jsonify({
             "detail": get_volume_details(volume_uri),
             "statistics": get_eb_vol_statistics(volume_uri)
         }), HTTPStatus.OK
 
     return jsonify({
-        "detail": get_volume_details(volume_uri, kg_type)
+        "detail": get_volume_details(volume_uri)
     }), HTTPStatus.OK
+
+
+@collection.post("/es/download")
+def download_es_full_details():
+    es_uri = request.json.get("uri")
+    # Get edition or series full details
+    es_full_details, es_type = get_es_full_details(es_uri)
+    # Convert the edition or series full details to YAML
+    yaml_data = yaml.dump(es_full_details)
+
+    # Create a file-like object in memory (BytesIO)
+    yaml_file = BytesIO()
+    yaml_file.write(yaml_data.encode('utf-8'))
+    yaml_file.seek(0)  # Reset file pointer to the beginning
+
+    # Send the file as a response
+    filename = es_type + es_full_details[es_type]["MMSID"] + ".yml"
+    return send_file(
+        yaml_file,
+        as_attachment=True,
+        download_name=filename,
+        mimetype='application/x-yaml'
+    )
+
+
+@collection.post("/volume/download")
+def download_volume_full_details():
+    volume_uri = request.json.get("uri")
+    # Get volume full details
+    volume_full_details = get_volume_full_details(volume_uri)
+    # Convert the volume full details to YAML
+    yaml_data = yaml.dump(volume_full_details)
+
+    # Create a file-like object in memory (BytesIO)
+    yaml_file = BytesIO()
+    yaml_file.write(yaml_data.encode('utf-8'))
+    yaml_file.seek(0)  # Reset file pointer to the beginning
+
+    # Send the file as a response
+    filename = "volume" + volume_full_details["volume"]["id"] + ".yml"
+    return send_file(
+        yaml_file,
+        as_attachment=True,
+        download_name=filename,
+        mimetype='application/x-yaml'
+    )

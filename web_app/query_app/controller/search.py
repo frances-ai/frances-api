@@ -17,15 +17,20 @@ search = Blueprint("search", __name__, url_prefix="/api/v1/search")
 def text_search():
     # Construct the query dictionary from request arguments
     size = request.args.get('perPage', 10, type=int)
+    exact_match = True if request.args.get('exact_match') == 'true' else False
+    phrase_match = True if request.args.get('phrase_match') == 'true' else False
     query_params = {
         'search_type': request.args.get('search_type', 'lexical'),
         'keyword': request.args.get('keyword', ''),
         'search_field': request.args.get('search_field', 'full_text'),
+        'exact_match': exact_match,
+        'phrase_match': phrase_match,
         'sort': request.args.get('sort', "_score"),
         'order': request.args.get('order', "desc"),
         'from': (request.args.get('page', 1, type=int) - 1) * size,
         'size': size,
     }
+    print(query_params)
 
     # Optional: handling range filters for year_published
     year_published_range_gte = request.args.get('year_published_range_gte', type=int)

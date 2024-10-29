@@ -22,6 +22,8 @@ def search(query):
     index_names = query.get('index_names', 'hto_*')
 
     sort_field = query.get('sort', None)
+    phrase_match = query.get('phrase_match', False)
+    exact_match = query.get('exact_match', False)
     output_fields = ["collection", "vol_title", "name", "note", "alter_names", "genre", "print_location",
                      "year_published", "description"]
     if "output_fields" in query:
@@ -84,22 +86,27 @@ def search(query):
             }
         }
         if keyword and keyword != '':
-            if search_field == 'full_text':
+            if exact_match:
                 body["query"]["bool"]["must"].append({
-                    "multi_match": {
-                        "query": keyword,
-                        "fields": ["name^2", "alter_names", "note", "description"]
-                    }
-                })
-            else:
-                query_type = "match"
-                if query.get('exact', False):
-                    query_type = "term"
-                body["query"]["bool"]["must"].append({
-                    query_type: {
+                    "term": {
                         search_field: keyword
                     }
                 })
+            else:
+                match_fields = [search_field]
+                if search_field == "full_text":
+                    match_fields = ["name^2", "alter_names", "note", "description"]
+                multi_match_type = "best_fields"
+                if phrase_match:
+                    multi_match_type = "phrase"
+                body["query"]["bool"]["must"].append({
+                    "multi_match": {
+                        "query": keyword,
+                        "type": multi_match_type,
+                        "fields": match_fields
+                    }
+                })
+
         else:
             body["query"]["bool"]["must"].append({"match_all": {}})
     elif search_type == "semantic":
@@ -160,7 +167,7 @@ def search(query):
                 }
             }
     # Perform the search
-    #print(body)
+    print(body)
     response = elasticsearch.search(index=index_names, body=body)
     return response
 

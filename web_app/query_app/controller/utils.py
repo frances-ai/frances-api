@@ -82,7 +82,7 @@ def dict_defoe_queries():
     defoe_q = {}
     defoe_q["frequency_keysearch_by_year"] = "frequency_keysearch_by_year"
     defoe_q["publication_normalized"] = "publication_normalized"
-    defoe_q["uris_keysearch"] = "uris_keysearch"
+    # defoe_q["uris_keysearch"] = "uris_keysearch"
     defoe_q["snippet_keysearch_by_year"] = "snippet_keysearch_by_year"
     defoe_q["fulltext_keysearch_by_year"] = "fulltext_keysearch_by_year"
     defoe_q["geoparser_by_year"] = "geoparser_by_year"

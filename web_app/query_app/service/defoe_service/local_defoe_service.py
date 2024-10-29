@@ -3,7 +3,7 @@ import re
 import grpc
 from .defoe_pb2 import JobSubmitRequest, JobRequest
 from .defoe_pb2_grpc import DefoeStub
-from web_app.query_app.utils import get_precomputed_name
+from ...utils import get_precomputed_name
 
 class LocalDefoeService:
     preComputedJobID = []

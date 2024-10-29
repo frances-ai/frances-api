@@ -1,5 +1,5 @@
 import unittest
-from search_service import search
+from web_app.query_app.service.search_service import search
 
 
 class MyTestCase(unittest.TestCase):

@@ -32,7 +32,7 @@ kg_base_url = "http://query.frances-ai.com/"
 if os.getenv("KG_BASE_URL"):
     kg_base_url = os.getenv("KG_BASE_URL")
 
-MODE = "local"
+MODE = "deploy"
 
 
 def get_hto_kg_endpoint():
@@ -45,8 +45,8 @@ def get_es():
     if elasticsearch is not None:
         return elasticsearch
     elasticsearch = Elasticsearch(
-        "your_elasitc_host",
-        api_key="your_api_key"
+        "https://83a1253d6aac48278867d36eed60b642.us-central1.gcp.cloud.es.io:443",
+        api_key="cmtBajU0MEJiRUoteDA3bmtubEE6bHpVYzFlSWNUSXFWcG8tbHFnOUFxQQ=="
     )
     return elasticsearch
 
@@ -112,8 +112,6 @@ def add_init_user(database):
     except Exception as e:
         print(e)
         database.rollback()
-
-
 
 
 MAIN_PYTHON_FILE_URI = "gs://frances2023/run_query.py"

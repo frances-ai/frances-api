@@ -31,7 +31,7 @@ hto_endpoint = DefaultFlaskConfig.HTO_ENDPOINT
 
 def create_defoe_query_config_hto(collection, source, preprocess, hit_count, data_file,
                               target_sentences, target_filter, start_year, end_year,
-                              window, gazetteer, bounding_box, level):
+                              window, gazetteer, bounding_box, level, exclude_words):
     config = {}
     if collection:
         config["collection"] = collection
@@ -51,51 +51,8 @@ def create_defoe_query_config_hto(collection, source, preprocess, hit_count, dat
     if target_sentences:
         config["target_sentences"] = target_sentences
 
-    if target_filter:
-        config["target_filter"] = target_filter
-
-    if start_year:
-        # start_year from request is integer, while defoe need string
-        config["start_year"] = str(start_year)
-
-    if end_year:
-        # end_year from request is integer, while defoe need string
-        config["end_year"] = str(end_year)
-
-    if window:
-        # end_year from request is integer, while defoe need string
-        config["window"] = str(window)
-
-    if gazetteer:
-        config["gazetteer"] = gazetteer
-
-    if bounding_box:
-        config["bounding_box"] = bounding_box
-
-    if level:
-        config["level"] = level
-
-    return config
-
-
-def create_defoe_query_config(kg_type, preprocess, hit_count, data_file,
-                              target_sentences, target_filter, start_year, end_year,
-                              window, gazetteer, bounding_box, level):
-    config = {}
-    if kg_type:
-        config["kg_type"] = kg_type
-
-    if preprocess:
-        config["preprocess"] = preprocess
-
-    if hit_count:
-        config["hit_count"] = hit_count
-
-    if data_file:
-        config["data"] = data_file
-
-    if target_sentences:
-        config["target_sentences"] = target_sentences
+    if exclude_words:
+        config["exclude_words"] = exclude_words
 
     if target_filter:
         config["target_filter"] = target_filter
@@ -136,6 +93,7 @@ def defoe_queries():
     # build defoe config from request
     preprocess = request.json.get('preprocess')
     target_sentences = request.json.get('target_sentences')
+    exclude_words = request.json.get('exclude_words')
     target_filter = request.json.get('target_filter')
     start_year = request.json.get('start_year')
     end_year = request.json.get('end_year')
@@ -157,7 +115,7 @@ def defoe_queries():
     defoe_query_config = DefoeQueryConfig.create_new(collection, source_provider, defoe_selection, preprocess, lexicon_file,
                                                      target_sentences, target_filter,
                                                      start_year, end_year, hit_count,
-                                                     window, gazetteer, bounding_box, level)
+                                                     window, gazetteer, bounding_box, level, exclude_words)
     database.add_defoe_query_config(defoe_query_config)
 
     # Save defoe query task information to database
@@ -176,7 +134,7 @@ def defoe_queries():
     # create query_config for defoe query
     config = create_defoe_query_config_hto(collection, source_provider, preprocess, hit_count, data_file,
                                        target_sentences, target_filter, start_year, end_year, window,
-                                       gazetteer, bounding_box, level)
+                                       gazetteer, bounding_box, level, exclude_words)
 
     try:
         # Submit defoe query task
@@ -312,7 +270,7 @@ def defoe_status():
             print("precomputed")
             status = defoe_service.get_status(task_id, is_pre_computed=True)
         else:
-            print("here")
+            #print("here")
             status = defoe_service.get_status(task_id)
         state = status["state"]
         output = {

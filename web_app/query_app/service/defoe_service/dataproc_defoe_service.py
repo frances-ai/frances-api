@@ -2,7 +2,7 @@ import random
 
 from google.cloud import dataproc, storage
 from google.cloud.dataproc_v1 import JobStatus
-from web_app.query_app.utils import get_precomputed_name
+from ...utils import get_precomputed_name
 
 
 def query_config_to_args(query_config):
@@ -25,14 +25,14 @@ class DataprocDefoeService:
     @staticmethod
     def get_pre_computed_queries():
         return {
-            "encyclopaediabritannica_NLS_publication_normalized": "precomputedResult/hto_encyclopaediabritannica_NLS_publication_normalized.yml",
+            "hto_encyclopaediabritannica_NLS_publication_normalized": "precomputedResult/hto_encyclopaediabritannica_NLS_publication_normalized.yml",
+            "hto_encyclopaediabritannica_NeuSpell_publication_normalized": "precomputedResult/hto_encyclopaediabritannica_NeuSpell_publication_normalized.yml",
+            "hto_encyclopaediabritannica_HQ_publication_normalized": "precomputedResult/hto_encyclopaediabritannica_HQ_publication_normalized.yml",
+            "hto_chapbooksprintedinscotland_NLS_publication_normalized": "precomputedResult/hto_chapbooksprintedinscotland_NLS_publication_normalized.yml",
+            "hto_gazetteersofscotland_NLS_publication_normalized": "precomputedResult/hto_gazetteersofscotland_NLS_publication_normalized.yml",
+            "hto_ladiesedinburghdebatingsociety_NLS_publication_normalized": "precomputedResult/hto_ladiesedinburghdebatingsociety_NLS_publication_normalized.yml",
+            "ebo_total_hq_publication_normalized": "precomputedResult/ebo_total_hq_publication_normalized.yml",
             "ebo_total_publication_normalized": "precomputedResult/ebo_total_publication_normalized.yml",
-            "chapbooks_scotland_publication_normalized": "precomputedResult"
-                                                         "/chapbooks_scotland_publication_normalized.yml",
-            "gazetteers_scotland_publication_normalized": "precomputedResult"
-                                                          "/gazetteers_scotland_publication_normalized.yml",
-            "ladies_publication_normalized": "precomputedResult"
-                                             "/ladies_publication_normalized.yml",
         }
 
     @staticmethod
@@ -162,14 +162,15 @@ if __name__ == "__main__":
     service = DataprocDefoeService(main_python_file_uri, python_file_uris, cluster)
 
     model_name = "hto"
-    query_name = "frequency_keysearch_by_year"
+    query_name = "lexicon_diversity"
     endpoint = "http://query.frances-ai.com/hto/sparql"
     query_config = {
         'collection': 'Encyclopaedia Britannica', 'source': 'NLS',
+        'level': 'year',
         "data": "animal.txt"
     }
-    result_file_path = "hto_eb_nls_frequency.yml"
-    job_id = "hto_eb_nls_frequency_1"
+    result_file_path = "hto_eb_nls_lexicon_diversity.yml"
+    job_id = "hto_eb_nls_lexicon_diversity"
 
     service.submit_job(job_id, model_name, query_name, endpoint, query_config, result_file_path)
 

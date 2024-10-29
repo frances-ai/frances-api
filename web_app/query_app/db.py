@@ -32,8 +32,9 @@ class DatabaseConfig:
 
 
 def record_to_defoe_query_task(record):
-    config_record = record[:15]
-    task_record = record[15:]
+    print(record)
+    config_record = record[:16]
+    task_record = record[16:]
     return DefoeQueryTask(*task_record[0:2], DefoeQueryConfig(*config_record), *task_record[3:])
 
 
@@ -46,7 +47,7 @@ class Database:
             user=config["user"],
             password=config["password"]
         )
-        self.create_tables()
+        #self.create_tables()
         #self.update_database()
 
     def rollback(self):
@@ -239,14 +240,16 @@ class Database:
         return results
 
     def add_defoe_query_config(self, config):
-        sql = "INSERT INTO  DefoeQueryConfigs(configID, collection, queryType, preprocess, lexiconFile, targetSentences, targetFilter, startYear, endYear, hitCount, snippetWindow, gazetteer, boundingBox, sourceProvider, level)" \
-              " VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s);"
+        sql = "INSERT INTO  DefoeQueryConfigs(configID, collection, queryType, preprocess, lexiconFile, " \
+              "targetSentences, targetFilter, startYear, endYear, hitCount, snippetWindow, gazetteer, " \
+              "boundingBox, sourceProvider, level, excludeWords)" \
+              " VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s);"
         vals = (
             config.id, config.collection, config.queryType, config.preprocess,
             config.lexiconFile,
             config.targetSentences,
             config.targetFilter, config.startYear, config.endYear, config.hitCount, config.window, config.gazetteer,
-            config.boundingBox, config.sourceProvider, config.level)
+            config.boundingBox, config.sourceProvider, config.level, config.excludeWords)
 
         cursor = self.db.cursor()
         cursor.execute(sql, vals)
@@ -284,7 +287,7 @@ class DefoeQueryConfig:
     def __init__(self, id, collection, queryType, preprocess, lexiconFile, targetSentences,
                  targetFilter, startYear,
                  endYear,
-                 hitCount, window, gazetteer, boundingBox, sourceProvider, level):
+                 hitCount, window, gazetteer, boundingBox, sourceProvider, level, excludeWords):
         self.id = id
         self.collection = collection
         self.sourceProvider = sourceProvider
@@ -300,16 +303,17 @@ class DefoeQueryConfig:
         self.gazetteer = gazetteer
         self.boundingBox = boundingBox
         self.level = level
+        self.excludeWords = excludeWords
 
     @staticmethod
     def create_new(collection, sourceProvider, queryType, preprocess, lexiconFile, targetSentences, targetFilter,
                    startYear, endYear,
-                   hitCount, window, gazetteer, boundingBox, level):
+                   hitCount, window, gazetteer, boundingBox, level, excludeWords):
         id = uuid.uuid5(uuid.NAMESPACE_URL, namespace + lexiconFile + str(time.time()))
         return DefoeQueryConfig(id, collection, queryType, preprocess, lexiconFile, targetSentences,
                                 targetFilter,
                                 startYear, endYear, hitCount,
-                                window, gazetteer, boundingBox, sourceProvider, level)
+                                window, gazetteer, boundingBox, sourceProvider, level, excludeWords)
 
     def to_dict(self):
         return {
@@ -326,7 +330,8 @@ class DefoeQueryConfig:
             "window": self.window,
             "gazetteer": self.gazetteer,
             "boundingBox": self.boundingBox,
-            "level": self.level
+            "level": self.level,
+            "excludeWords": self.excludeWords
         }
 
 
