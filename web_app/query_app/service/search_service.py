@@ -1,4 +1,7 @@
-from ..resolver import get_es
+from .nlp_service import get_sentence_embedding
+from ..flask_config import DefaultFlaskConfig
+
+elasticsearch = DefaultFlaskConfig().ELASTIC_SERVICE
 
 
 def search(query):
@@ -17,7 +20,6 @@ def search(query):
     }
     :return: elastic search result
     """
-    elasticsearch = get_es()
 
     index_names = query.get('index_names', 'hto_*')
 
@@ -114,12 +116,7 @@ def search(query):
             "field": "embedding",
             "k": 20,
             "num_candidates": 100,
-            "query_vector_builder": {
-                "text_embedding": {
-                    "model_id": "sentence-transformers__all-mpnet-base-v2",
-                    "model_text": keyword
-                }
-            },
+            "query_vector": get_sentence_embedding(keyword),
             "filter": []
         }
 
@@ -167,13 +164,12 @@ def search(query):
                 }
             }
     # Perform the search
-    print(body)
+    #print(body)
     response = elasticsearch.search(index=index_names, body=body)
     return response
 
 
 def get_term_info(term_uri):
-    elasticsearch = get_es()
     index_name = 'hto_eb'
     response = elasticsearch.get(index=index_name, id=term_uri)
     result = response['_source']
@@ -188,7 +184,6 @@ def get_item_by_concept_uri(concept_uri, index_name):
             }
         }
     }
-    elasticsearch = get_es()
 
     # Execute the search query
     response = elasticsearch.search(index=index_name, body=query)
@@ -212,7 +207,6 @@ def exact_knn_search(query):
     }
     :return: elastic search result
     """
-    elasticsearch = get_es()
     index_name = "hto_eb"
     body = {
         "size": query.get('size', 20),

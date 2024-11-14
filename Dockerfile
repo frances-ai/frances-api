@@ -11,7 +11,9 @@ ENV PYSPARK_DRIVER_PYTHON=usr/local/bin/python3
 COPY ./web_app /web_app
 
 # install dependencies
-RUN pip install -r /web_app/requirements.txt
+RUN pip install --no-cache-dir --upgrade pip
+RUN pip install --no-cache-dir torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cpu
+RUN pip install --no-cache-dir -r /web_app/requirements.txt
 RUN python -m nltk.downloader all
 
 

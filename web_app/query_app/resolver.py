@@ -40,13 +40,14 @@ def get_hto_kg_endpoint():
     return kg_base_url + kg_name + "/sparql"
 
 
-def get_es():
+def get_es(ca_path):
     global elasticsearch
     if elasticsearch is not None:
         return elasticsearch
     elasticsearch = Elasticsearch(
-        "https://83a1253d6aac48278867d36eed60b642.us-central1.gcp.cloud.es.io:443",
-        api_key="cmtBajU0MEJiRUoteDA3bmtubEE6bHpVYzFlSWNUSXFWcG8tbHFnOUFxQQ=="
+        "https://query.frances-ai.com:9200/",
+        ca_certs=ca_path,
+        api_key="api key"
     )
     return elasticsearch
 

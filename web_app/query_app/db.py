@@ -47,7 +47,7 @@ class Database:
             user=config["user"],
             password=config["password"]
         )
-        #self.create_tables()
+        self.create_tables()
         #self.update_database()
 
     def rollback(self):
@@ -118,6 +118,25 @@ class Database:
         cursor.execute(sql, vals)
         self.db.commit()
         return
+
+    def add_visit(self, visit):
+        sql = "INSERT INTO StatsVisits (visitId, ip, page) VALUES (%s, %s, %s);"
+        vals = (visit.id, visit.ip, visit.page)
+
+        cursor = self.db.cursor()
+        cursor.execute(sql, vals)
+        self.db.commit()
+        return
+
+    def get_number_of_visits(self):
+        sql = "SELECT COUNT(*) FROM StatsVisits;"
+        cursor = self.db.cursor()
+        cursor.execute(sql)
+        results = cursor.fetchall()
+        if len(results) == 0:
+            return None
+        res = results[0]
+        return res
 
     def add_defoe_query_task(self, task):
         sql = "INSERT INTO DefoeQueryTasks (taskID, userID, configID, resultFile, progress, state, errorMsg) VALUES (%s, %s, %s, %s, %s, %s, %s);"
@@ -283,6 +302,18 @@ class User:
         return User(id, first_name, last_name, email, password)
 
 
+class Visit:
+    def __init__(self, id, ip, page):
+        self.id = id
+        self.ip = ip
+        self.page = page
+
+    @staticmethod
+    def create_new(ip, page):
+        id = uuid.uuid5(uuid.NAMESPACE_URL, namespace + ip + str(time.time()))
+        return Visit(id, ip, page)
+
+
 class DefoeQueryConfig:
     def __init__(self, id, collection, queryType, preprocess, lexiconFile, targetSentences,
                  targetFilter, startYear,
@@ -361,44 +392,3 @@ class DefoeQueryTask:
             "errorMsg": self.errorMsg,
             "submit_time": self.submitTime.strftime("%Y-%m-%d %H:%M:%S.%f")
         }
-
-
-if __name__ == "__main__":
-    config = DatabaseConfig()
-    config.host = "127.0.0.1"
-    config.user = "frances"
-    config.password = "frances"
-
-    db = Database(config)
-
-    user = User.create_new("wilfrid", "kins", "in@gmail.com", "abcabc")
-    db.add_user(user)
-
-    u = db.get_active_user_by_id(user.id)
-    print("user")
-    print(u.first_name)
-    print(u.email)
-    print()
-
-    u = db.get_user_by_email('damonyu97@hotmail.com')
-    print(u)
-
-    # Mock Defoe Query Task Submit
-
-    # Save config
-    config = DefoeQueryConfig.create_new("eb", "public", "None", "lexiconpath", "", "any", 1771, 1771, "word", 10);
-    db.add_defoe_query_config(config)
-
-    # Save Task
-    task = DefoeQueryTask.create_new(user.id, config.id, "", 0, "")
-    db.add_defoe_query_task(task)
-
-    taskInfo = db.get_defoe_query_task_by_taskID(task.id)
-    print(taskInfo.submitTime)
-    print(taskInfo.progress)
-
-    taskInfo.progress = 2
-    db.update_defoe_query_task(taskInfo)
-
-    updatedTask = db.get_defoe_query_task_by_taskID(taskInfo.id)
-    print(updatedTask.progress)
