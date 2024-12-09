@@ -2,31 +2,34 @@ services:
   database:
     image: postgres
     environment:
-      - POSTGRES_USER=frances
-      - POSTGRES_PASSWORD=frances
+      - POSTGRES_USER=${POSTGRES_USER}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
     ports:
       - "5432:5432"
     volumes:
       - ./postgres/data:/var/lib/postgresql/data
   frances-api:
-    image: damonyudocker/frances-api:v2
+    image: damonyudocker/frances-api:v2.2.0
     ports:
       - "5000:5000"
     volumes:
       - /home/damonyu/.config/gcloud/application_default_credentials.json:/gcp/creds.json
+      - /home/damonyu/ca/elastic_ca.crt:/web_app/query_app/certs/elastic_ca.crt
     environment:
       - FRANCES_FRONT_DOMAIN=www.frances-ai.com
       - FRANCES_FRONT_PORT=80
-      - KG_BASE_URL=your_fuseki_server_url
-      - PROJECT_ID=your_google_cloud_project_id
-      - CLUSTER_NAME=your_dataproc_cluster_name
+      - KG_BASE_URL=http://query.frances-ai.com/
+      - PROJECT_ID=frances-365422
+      - CLUSTER_NAME=cluster-8753
       - CLUSTER_REGION=us-central1
       - GOOGLE_APPLICATION_CREDENTIALS=/gcp/creds.json
+      - ELASTICSEARCH_API_KEY=${ELASTICSEARCH_API_KEY}
+      - ELASTICSEARCH_HOST=${ELASTICSEARCH_HOST}
     depends_on:
       database:
         condition: service_started
   frances-front:
-    image: damonyudocker/frances-front:v2
+    image: damonyudocker/frances-front:v2.2.0
     ports:
       - "80:80"
     environment:
