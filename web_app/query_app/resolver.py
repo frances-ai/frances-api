@@ -32,7 +32,7 @@ kg_base_url = "http://query.frances-ai.com/"
 if os.getenv("KG_BASE_URL"):
     kg_base_url = os.getenv("KG_BASE_URL")
 
-MODE = "local"
+MODE = "deploy"
 
 
 def get_hto_kg_endpoint():
@@ -40,13 +40,14 @@ def get_hto_kg_endpoint():
     return kg_base_url + kg_name + "/sparql"
 
 
-def get_es():
+def get_es(ca_path):
     global elasticsearch
     if elasticsearch is not None:
         return elasticsearch
     elasticsearch = Elasticsearch(
-        "your_elasitc_host",
-        api_key="your_api_key"
+        "https://query.frances-ai.com:9200/",
+        ca_certs=ca_path,
+        api_key="api key"
     )
     return elasticsearch
 
@@ -112,8 +113,6 @@ def add_init_user(database):
     except Exception as e:
         print(e)
         database.rollback()
-
-
 
 
 MAIN_PYTHON_FILE_URI = "gs://frances2023/run_query.py"

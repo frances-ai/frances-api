@@ -32,8 +32,9 @@ class DatabaseConfig:
 
 
 def record_to_defoe_query_task(record):
-    config_record = record[:14]
-    task_record = record[14:]
+    print(record)
+    config_record = record[:16]
+    task_record = record[16:]
     return DefoeQueryTask(*task_record[0:2], DefoeQueryConfig(*config_record), *task_record[3:])
 
 
@@ -47,7 +48,7 @@ class Database:
             password=config["password"]
         )
         self.create_tables()
-        # self.update_database()
+        #self.update_database()
 
     def rollback(self):
         self.db.rollback()
@@ -117,6 +118,25 @@ class Database:
         cursor.execute(sql, vals)
         self.db.commit()
         return
+
+    def add_visit(self, visit):
+        sql = "INSERT INTO StatsVisits (visitId, ip, page) VALUES (%s, %s, %s);"
+        vals = (visit.id, visit.ip, visit.page)
+
+        cursor = self.db.cursor()
+        cursor.execute(sql, vals)
+        self.db.commit()
+        return
+
+    def get_number_of_visits(self):
+        sql = "SELECT COUNT(*) FROM StatsVisits;"
+        cursor = self.db.cursor()
+        cursor.execute(sql)
+        results = cursor.fetchall()
+        if len(results) == 0:
+            return None
+        res = results[0]
+        return res
 
     def add_defoe_query_task(self, task):
         sql = "INSERT INTO DefoeQueryTasks (taskID, userID, configID, resultFile, progress, state, errorMsg) VALUES (%s, %s, %s, %s, %s, %s, %s);"
@@ -239,14 +259,16 @@ class Database:
         return results
 
     def add_defoe_query_config(self, config):
-        sql = "INSERT INTO  DefoeQueryConfigs(configID, collection, queryType, preprocess, lexiconFile, targetSentences, targetFilter, startYear, endYear, hitCount, snippetWindow, gazetteer, boundingBox, sourceProvider)" \
-              " VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s);"
+        sql = "INSERT INTO  DefoeQueryConfigs(configID, collection, queryType, preprocess, lexiconFile, " \
+              "targetSentences, targetFilter, startYear, endYear, hitCount, snippetWindow, gazetteer, " \
+              "boundingBox, sourceProvider, level, excludeWords)" \
+              " VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s);"
         vals = (
             config.id, config.collection, config.queryType, config.preprocess,
             config.lexiconFile,
             config.targetSentences,
             config.targetFilter, config.startYear, config.endYear, config.hitCount, config.window, config.gazetteer,
-            config.boundingBox, config.sourceProvider)
+            config.boundingBox, config.sourceProvider, config.level, config.excludeWords)
 
         cursor = self.db.cursor()
         cursor.execute(sql, vals)
@@ -280,11 +302,23 @@ class User:
         return User(id, first_name, last_name, email, password)
 
 
+class Visit:
+    def __init__(self, id, ip, page):
+        self.id = id
+        self.ip = ip
+        self.page = page
+
+    @staticmethod
+    def create_new(ip, page):
+        id = uuid.uuid5(uuid.NAMESPACE_URL, namespace + ip + str(time.time()))
+        return Visit(id, ip, page)
+
+
 class DefoeQueryConfig:
     def __init__(self, id, collection, queryType, preprocess, lexiconFile, targetSentences,
                  targetFilter, startYear,
                  endYear,
-                 hitCount, window, gazetteer, boundingBox, sourceProvider):
+                 hitCount, window, gazetteer, boundingBox, sourceProvider, level, excludeWords):
         self.id = id
         self.collection = collection
         self.sourceProvider = sourceProvider
@@ -299,16 +333,18 @@ class DefoeQueryConfig:
         self.window = window
         self.gazetteer = gazetteer
         self.boundingBox = boundingBox
+        self.level = level
+        self.excludeWords = excludeWords
 
     @staticmethod
     def create_new(collection, sourceProvider, queryType, preprocess, lexiconFile, targetSentences, targetFilter,
                    startYear, endYear,
-                   hitCount, window, gazetteer, boundingBox):
+                   hitCount, window, gazetteer, boundingBox, level, excludeWords):
         id = uuid.uuid5(uuid.NAMESPACE_URL, namespace + lexiconFile + str(time.time()))
         return DefoeQueryConfig(id, collection, queryType, preprocess, lexiconFile, targetSentences,
                                 targetFilter,
                                 startYear, endYear, hitCount,
-                                window, gazetteer, boundingBox, sourceProvider)
+                                window, gazetteer, boundingBox, sourceProvider, level, excludeWords)
 
     def to_dict(self):
         return {
@@ -324,7 +360,9 @@ class DefoeQueryConfig:
             "hitCount": self.hitCount,
             "window": self.window,
             "gazetteer": self.gazetteer,
-            "boundingBox": self.boundingBox
+            "boundingBox": self.boundingBox,
+            "level": self.level,
+            "excludeWords": self.excludeWords
         }
 
 
@@ -354,44 +392,3 @@ class DefoeQueryTask:
             "errorMsg": self.errorMsg,
             "submit_time": self.submitTime.strftime("%Y-%m-%d %H:%M:%S.%f")
         }
-
-
-if __name__ == "__main__":
-    config = DatabaseConfig()
-    config.host = "127.0.0.1"
-    config.user = "frances"
-    config.password = "frances"
-
-    db = Database(config)
-
-    user = User.create_new("wilfrid", "kins", "in@gmail.com", "abcabc")
-    db.add_user(user)
-
-    u = db.get_active_user_by_id(user.id)
-    print("user")
-    print(u.first_name)
-    print(u.email)
-    print()
-
-    u = db.get_user_by_email('damonyu97@hotmail.com')
-    print(u)
-
-    # Mock Defoe Query Task Submit
-
-    # Save config
-    config = DefoeQueryConfig.create_new("eb", "public", "None", "lexiconpath", "", "any", 1771, 1771, "word", 10);
-    db.add_defoe_query_config(config)
-
-    # Save Task
-    task = DefoeQueryTask.create_new(user.id, config.id, "", 0, "")
-    db.add_defoe_query_task(task)
-
-    taskInfo = db.get_defoe_query_task_by_taskID(task.id)
-    print(taskInfo.submitTime)
-    print(taskInfo.progress)
-
-    taskInfo.progress = 2
-    db.update_defoe_query_task(taskInfo)
-
-    updatedTask = db.get_defoe_query_task_by_taskID(taskInfo.id)
-    print(updatedTask.progress)

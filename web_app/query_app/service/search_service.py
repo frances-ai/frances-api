@@ -1,4 +1,7 @@
-from ..resolver import get_es
+from .nlp_service import get_sentence_embedding
+from ..flask_config import DefaultFlaskConfig
+
+elasticsearch = DefaultFlaskConfig().ELASTIC_SERVICE
 
 
 def search(query):
@@ -17,11 +20,12 @@ def search(query):
     }
     :return: elastic search result
     """
-    elasticsearch = get_es()
 
     index_names = query.get('index_names', 'hto_*')
 
     sort_field = query.get('sort', None)
+    phrase_match = query.get('phrase_match', False)
+    exact_match = query.get('exact_match', False)
     output_fields = ["collection", "vol_title", "name", "note", "alter_names", "genre", "print_location",
                      "year_published", "description"]
     if "output_fields" in query:
@@ -84,22 +88,27 @@ def search(query):
             }
         }
         if keyword and keyword != '':
-            if search_field == 'full_text':
+            if exact_match:
                 body["query"]["bool"]["must"].append({
-                    "multi_match": {
-                        "query": keyword,
-                        "fields": ["name^2", "alter_names", "note", "description"]
-                    }
-                })
-            else:
-                query_type = "match"
-                if query.get('exact', False):
-                    query_type = "term"
-                body["query"]["bool"]["must"].append({
-                    query_type: {
+                    "term": {
                         search_field: keyword
                     }
                 })
+            else:
+                match_fields = [search_field]
+                if search_field == "full_text":
+                    match_fields = ["name^2", "alter_names", "note", "description"]
+                multi_match_type = "best_fields"
+                if phrase_match:
+                    multi_match_type = "phrase"
+                body["query"]["bool"]["must"].append({
+                    "multi_match": {
+                        "query": keyword,
+                        "type": multi_match_type,
+                        "fields": match_fields
+                    }
+                })
+
         else:
             body["query"]["bool"]["must"].append({"match_all": {}})
     elif search_type == "semantic":
@@ -107,12 +116,7 @@ def search(query):
             "field": "embedding",
             "k": 20,
             "num_candidates": 100,
-            "query_vector_builder": {
-                "text_embedding": {
-                    "model_id": "sentence-transformers__all-mpnet-base-v2",
-                    "model_text": keyword
-                }
-            },
+            "query_vector": get_sentence_embedding(keyword),
             "filter": []
         }
 
@@ -166,7 +170,6 @@ def search(query):
 
 
 def get_term_info(term_uri):
-    elasticsearch = get_es()
     index_name = 'hto_eb'
     response = elasticsearch.get(index=index_name, id=term_uri)
     result = response['_source']
@@ -181,7 +184,6 @@ def get_item_by_concept_uri(concept_uri, index_name):
             }
         }
     }
-    elasticsearch = get_es()
 
     # Execute the search query
     response = elasticsearch.search(index=index_name, body=query)
@@ -205,7 +207,6 @@ def exact_knn_search(query):
     }
     :return: elastic search result
     """
-    elasticsearch = get_es()
     index_name = "hto_eb"
     body = {
         "size": query.get('size', 20),

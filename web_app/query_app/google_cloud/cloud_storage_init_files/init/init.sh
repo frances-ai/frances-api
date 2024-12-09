@@ -26,6 +26,8 @@ conda install -c conda-forge spacy
 conda install --yes SPARQLWrapper
 pip install pandas
 pip install google-cloud-storage
+pip install lexicalrichness
+pip install gender-guesser
 python -m spacy download en
 python -m spacy download en_core_web_lg
 python -m nltk.downloader all

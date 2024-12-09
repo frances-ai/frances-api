@@ -26,7 +26,9 @@ CREATE TABLE IF NOT EXISTS DefoeQueryConfigs (
   snippetWindow INTEGER,
   gazetteer VARCHAR(20),
   boundingBox VARCHAR(100),
-sourceProvider VARCHAR(20) NOT NULL DEFAULT 'NLS'
+  sourceProvider VARCHAR(20) NOT NULL DEFAULT 'NLS',
+  level VARCHAR(20),
+  excludeWords TEXT
 );
 
 CREATE TABLE IF NOT EXISTS DefoeQueryTasks (
@@ -43,4 +45,13 @@ CREATE TABLE IF NOT EXISTS DefoeQueryTasks (
 
   FOREIGN KEY (userID) REFERENCES Users(userID),
   FOREIGN KEY (configID) REFERENCES DefoeQueryConfigs(configID)
+);
+
+
+CREATE TABLE IF NOT EXISTS StatsVisits (
+    visitId UUID PRIMARY KEY,
+    ip VARCHAR(45) NOT NULL,
+    page VARCHAR(255),
+    visitedAt TIMESTAMP WITHOUT TIME ZONE NOT NULL
+                                   DEFAULT (current_timestamp AT TIME ZONE 'UTC')
 );

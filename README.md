@@ -43,8 +43,8 @@ see instructions here: [defoe](https://github.com/frances-ai/defoe_lib/blob/main
 
 see instructions here: [docker](https://docs.docker.com/engine/install/)
 
-The required knowledge graphs can be generated from [Knowledge Graph Generator](), these knowledge graphs should be 
-to fuseki server, see [stain/fuseki]()
+The required knowledge graphs can be generated from [Knowledge Graph Generator](https://github.com/frances-ai/KnowledgeGraph/tree/master/GraphGenerator), these knowledge graphs should be 
+to fuseki server, see [stain/fuseki](https://hub.docker.com/r/stain/jena-fuseki)
  
 start postgresql database and fuseki server using docker compose. In the `frances-api` directory, run
 ```bash

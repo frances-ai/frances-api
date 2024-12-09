@@ -1,10 +1,12 @@
 import io
+import re
 
 from flask import Blueprint, send_file, request, jsonify, session, current_app
 from flask_jwt_extended import jwt_required, get_jwt_identity
 from http import HTTPStatus
 
-from .utils import dict_defoe_queries, read_results, get_kg_type, get_kg_url
+from .utils import dict_defoe_queries, read_results
+from ..utils import get_precomputed_name
 
 import time, os
 from zipfile import *
@@ -24,14 +26,18 @@ defoe_service = DefaultFlaskConfig.DEFOE_SERVICE
 upload_folder = DefaultFlaskConfig.UPLOAD_FOLDER
 result_folder = DefaultFlaskConfig.RESULTS_FOLDER
 google_cloud_storage = DefaultFlaskConfig.GOOGLE_CLOUD_STORAGE
+hto_endpoint = DefaultFlaskConfig.HTO_ENDPOINT
 
 
-def create_defoe_query_config(kg_type, preprocess, hit_count, data_file,
+def create_defoe_query_config_hto(collection, source, preprocess, hit_count, data_file,
                               target_sentences, target_filter, start_year, end_year,
-                              window, gazetteer, bounding_box):
+                              window, gazetteer, bounding_box, level, exclude_words):
     config = {}
-    if kg_type:
-        config["kg_type"] = kg_type
+    if collection:
+        config["collection"] = collection
+
+    if source:
+        config["source"] = source
 
     if preprocess:
         config["preprocess"] = preprocess
@@ -44,6 +50,9 @@ def create_defoe_query_config(kg_type, preprocess, hit_count, data_file,
 
     if target_sentences:
         config["target_sentences"] = target_sentences
+
+    if exclude_words:
+        config["exclude_words"] = exclude_words
 
     if target_filter:
         config["target_filter"] = target_filter
@@ -66,6 +75,9 @@ def create_defoe_query_config(kg_type, preprocess, hit_count, data_file,
     if bounding_box:
         config["bounding_box"] = bounding_box
 
+    if level:
+        config["level"] = level
+
     return config
 
 
@@ -81,10 +93,12 @@ def defoe_queries():
     # build defoe config from request
     preprocess = request.json.get('preprocess')
     target_sentences = request.json.get('target_sentences')
+    exclude_words = request.json.get('exclude_words')
     target_filter = request.json.get('target_filter')
     start_year = request.json.get('start_year')
     end_year = request.json.get('end_year')
     hit_count = request.json.get('hit_count')
+    level = request.json.get('level')
     lexicon_file = request.json.get('file', '')
     data_file = os.path.join(upload_folder, user_id, lexicon_file)
     source_provider = request.json.get('source_provider', 'NLS')
@@ -94,8 +108,6 @@ def defoe_queries():
     gazetteer = request.json.get('gazetteer')
     collection = request.json.get('collection', 'Encyclopaedia Britannica')
 
-    kg_type = get_kg_type(collection, source_provider)
-
     # For terms_snippet_keysearch_by_year query, add window
     window = request.json.get('window')
 
@@ -103,7 +115,7 @@ def defoe_queries():
     defoe_query_config = DefoeQueryConfig.create_new(collection, source_provider, defoe_selection, preprocess, lexicon_file,
                                                      target_sentences, target_filter,
                                                      start_year, end_year, hit_count,
-                                                     window, gazetteer, bounding_box)
+                                                     window, gazetteer, bounding_box, level, exclude_words)
     database.add_defoe_query_config(defoe_query_config)
 
     # Save defoe query task information to database
@@ -112,24 +124,25 @@ def defoe_queries():
     result_filename = str(query_task.id) + ".yml"
     result_file_path = os.path.join(result_folder, user_id, str(query_task.id) + ".yml")
 
-    if (kg_type + '_' + defoe_selection) in defoe_service.get_pre_computed_queries():
-        result_file_path = defoe_service.get_pre_computed_queries()[kg_type + '_' + defoe_selection]
+    pre_computed_name = get_precomputed_name(collection, "hto", source_provider, defoe_selection)
+    if pre_computed_name in defoe_service.get_pre_computed_queries():
+        result_file_path = defoe_service.get_pre_computed_queries()[pre_computed_name]
         result_filename = result_file_path
 
     query_task.resultFile = result_filename
 
     # create query_config for defoe query
-    config = create_defoe_query_config(kg_type, preprocess, hit_count, data_file,
+    config = create_defoe_query_config_hto(collection, source_provider, preprocess, hit_count, data_file,
                                        target_sentences, target_filter, start_year, end_year, window,
-                                       gazetteer, bounding_box)
+                                       gazetteer, bounding_box, level, exclude_words)
 
     try:
         # Submit defoe query task
         defoe_service.submit_job(
             job_id=str(query_task.id),
-            model_name="sparql",
+            model_name="hto",
             query_name=defoe_selection,
-            endpoint=get_kg_url(kg_type),
+            endpoint=hto_endpoint,
             query_config=config,
             result_file_path=result_file_path
         )
@@ -254,8 +267,10 @@ def defoe_status():
         # When query job is not done
         current_app.logger.info('query defoe service')
         if "precomputedResult" in task.resultFile:
+            print("precomputed")
             status = defoe_service.get_status(task_id, is_pre_computed=True)
         else:
+            #print("here")
             status = defoe_service.get_status(task_id)
         state = status["state"]
         output = {
@@ -310,11 +325,13 @@ def defoe_query_task():
         }), HTTPStatus.BAD_REQUEST
     else:
         if task.config.queryType == "frequency_keysearch_by_year":
-            kg_type = get_kg_type(task.config.collection, task.config.sourceProvider)
-            query_info = kg_type + "_publication_normalized"
+            #kg_type = get_kg_type(task.config.collection, task.config.sourceProvider)
+            collection = task.config.collection
+            source = task.config.sourceProvider
+            precomputed_name = get_precomputed_name(collection, "hto", source, "publication_normalized")
             return jsonify({
                 "task": task.to_dict(),
-                "publication_normalized_result_path": defoe_service.get_pre_computed_queries()[query_info]
+                "publication_normalized_result_path": defoe_service.get_pre_computed_queries()[precomputed_name]
             }), HTTPStatus.OK
         return jsonify({
             "task": task.to_dict()

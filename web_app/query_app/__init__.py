@@ -14,6 +14,7 @@ from .controller.auth import auth, auth_protected
 from .controller.query import query, query_protected
 from .controller.search import search
 from .controller.collection_detail import collection
+from .controller.stats import stats
 from .core import limiter
 
 from .flask_config import DefaultFlaskConfig
@@ -37,6 +38,7 @@ def create_app(test_config=None):
     JWTManager(app)
 
     # Register blueprints
+    app.register_blueprint(stats)
     app.register_blueprint(auth)
     app.register_blueprint(auth_protected)
     app.register_blueprint(query)
