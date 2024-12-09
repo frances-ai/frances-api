@@ -32,7 +32,14 @@ kg_base_url = "http://query.frances-ai.com/"
 if os.getenv("KG_BASE_URL"):
     kg_base_url = os.getenv("KG_BASE_URL")
 
-MODE = "deploy"
+elasticsearch_api_key = "your_api_key"
+if os.getenv("ELASTICSEARCH_API_KEY"):
+    elasticsearch_api_key = os.getenv("ELASTICSEARCH_API_KEY")
+elasticsearch_host = "https://elastic.frances-ai.com:9200/"
+if os.getenv("ELASTICSEARCH_HOST"):
+    elasticsearch_host = os.getenv("ELASTICSEARCH_HOST")
+
+MODE = "local"
 
 
 def get_hto_kg_endpoint():
@@ -45,9 +52,9 @@ def get_es(ca_path):
     if elasticsearch is not None:
         return elasticsearch
     elasticsearch = Elasticsearch(
-        "https://query.frances-ai.com:9200/",
+        elasticsearch_host,
         ca_certs=ca_path,
-        api_key="api key"
+        api_key=elasticsearch_api_key
     )
     return elasticsearch
 
