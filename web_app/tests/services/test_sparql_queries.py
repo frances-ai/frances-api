@@ -4,10 +4,10 @@ from web_app.query_app.controller import sparql_queries
 
 class MyTestCase(unittest.TestCase):
     def test_get_series(self):
-        collection_name = "Chapbooks printed in Scotland"
+        collection_name = "Gazetteers of Scotland"
         series_list = sparql_queries.get_series(collection_name)
         print(series_list[0])
-        self.assertEqual(len(series_list), 2742)
+        self.assertEqual(len(series_list), 12)
 
     def test_get_eb_editions(self):
         editions_list = sparql_queries.get_editions()
@@ -45,6 +45,12 @@ class MyTestCase(unittest.TestCase):
         volume_uri = "<https://w3id.org/hto/Volume/9929733583804340_104184378>"
         volume_details = sparql_queries.get_volume_full_details(volume_uri)
         print(volume_details)
+
+    def test_get_term_definitions(self):
+        term_uri = "<https://w3id.org/hto/ArticleTermRecord/9910796273804340_193819045_4574394098_0>"
+        #term_uri = "<https://w3id.org/hto/ArticleTermRecord/9922270543804340_192200899_6364534740_0>"
+        term_definitions = sparql_queries.get_term_definitions(term_uri)
+        print(term_definitions)
 
 
 

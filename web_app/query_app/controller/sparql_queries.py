@@ -1,3 +1,5 @@
+import json
+
 from SPARQLWrapper import SPARQLWrapper, JSON
 from .utils import get_kg_url
 from ..resolver import get_hto_kg_endpoint
@@ -66,9 +68,9 @@ def get_series(collection_name):
     query = """
     PREFIX hto: <https://w3id.org/hto#>
     SELECT ?title ?s ?y WHERE {
-            ?collection a hto:WorkCollection;
-                hto:name '%s'.
-                
+           ?collection a hto:WorkCollection;
+                hto:name '%s';
+                hto:hadMember ?s.
            ?s a hto:Series;
                 hto:title ?title ;
                 hto:yearPublished ?y.
@@ -182,22 +184,22 @@ def get_edition_details(uri):
 
 def get_series_details(uri):
     query = """
-    PREFIX hto: <https://w3id.org/hto#>
-    PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
-    SELECT ?genre ?yearPublished ?num ?title ?subtitle ?printedAt ?physicalDescription ?mmsid ?shelfLocator ?numberOfVolumes  WHERE {
-           %s hto:yearPublished ?yearPublished;
-              hto:title ?title;
-              hto:printedAt ?printed_uri;
-              hto:physicalDescription ?physicalDescription;
-              hto:mmsid ?mmsid;
-              hto:shelfLocator ?shelfLocator_uri;
-              hto:genre ?genre. 
-            ?printed_uri rdfs:label ?printedAt.
-            ?shelfLocator_uri rdfs:label ?shelfLocator.
-            OPTIONAL {%s hto:subtitle ?subtitle}
-            OPTIONAL {%s hto:number ?num}
-    }
-    """ % (uri, uri, uri)
+PREFIX hto: <https://w3id.org/hto#>
+PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
+SELECT ?genre ?yearPublished ?num ?title ?subtitle ?printedAt ?physicalDescription ?mmsid ?shelfLocator WHERE {
+    %s hto:yearPublished ?yearPublished;
+        hto:title ?title;
+        hto:mmsid ?mmsid;
+        hto:physicalDescription ?physicalDescription;
+        hto:genre ?genre.
+    OPTIONAL {%s hto:shelfLocator ?shelfLocator_uri. 
+        ?shelfLocator_uri rdfs:label ?shelfLocator.}
+    OPTIONAL {%s hto:printedAt ?printed_uri.
+        ?printed_uri rdfs:label ?printedAt.}
+    OPTIONAL {%s hto:subtitle ?subtitle}
+    OPTIONAL {%s hto:number ?num}
+}
+    """ % (uri, uri, uri, uri, uri)
     sparqlW.setQuery(query)
     sparqlW.setReturnFormat(JSON)
     results = sparqlW.query().convert()
@@ -209,14 +211,21 @@ def get_series_details(uri):
         if "num" in r:
             number = r["num"]["value"]
         clean_r["uri"] = uri
-
+        subtitle = None
         if "subtitle" in r:
-            clean_r["subtitle"] = r["subtitle"]["value"]
+            subtitle = r["subtitle"]["value"]
+        shelf_locator = None
+        if "shelfLocator" in r:
+            shelf_locator = r["shelfLocator"]["value"]
+        clean_r["shelfLocator"] = shelf_locator
+        clean_r["subtitle"] = subtitle
         clean_r["number"] = number
-        clean_r["printedAt"] = r["printedAt"]["value"]
+        printed_at = None
+        if "printedAt" in r:
+            printed_at = r["printedAt"]["value"]
+        clean_r["printedAt"] = printed_at
         clean_r["physicalDescription"] = r["physicalDescription"]["value"]
         clean_r["MMSID"] = r["mmsid"]["value"]
-        clean_r["shelfLocator"] = r["shelfLocator"]["value"]
         clean_r["genre"] = r["genre"]["value"]
         clean_r["language"] = "English"
         clean_r["numOfVolumes"] = get_numberOfVolumes(uri)
@@ -568,7 +577,107 @@ def get_nls_document_page_image_url(page_permanent_url):
     return page_image_url
 
 
+def page_exists(page_uri):
+    hto_sparql = SPARQLWrapper(hto_endpoint)
+    hto_sparql.setReturnFormat(JSON)
+    query = """
+                PREFIX hto: <https://w3id.org/hto#>
+                SELECT * WHERE {
+                    %s a hto:Page;
+                }
+                """ % (page_uri)
+    # print(query)
+    hto_sparql.setQuery(query)
+    try:
+        ret = hto_sparql.queryAndConvert()
+        if len(ret["results"]["bindings"]) == 1:
+            return True
+
+    except Exception as e:
+        print(e)
+
+    return False
+
+
 def get_page_display_info(page_uri):
+    result = {}
+    hto_sparql = SPARQLWrapper(hto_endpoint)
+    hto_sparql.setReturnFormat(JSON)
+    query = """
+            PREFIX hto: <https://w3id.org/hto#>
+            PREFIX crm: <http://www.cidoc-crm.org/cidoc-crm/>
+            PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
+            SELECT * WHERE {
+                %s a hto:Page;
+                    hto:number ?number.
+                OPTIONAL { %s hto:permanentURL ?permanentURL.}
+                OPTIONAL { %s crm:P138i_has_representation ?image_url.}
+            }
+            """ % (page_uri, page_uri, page_uri)
+    # print(query)
+    hto_sparql.setQuery(query)
+    try:
+        ret = hto_sparql.queryAndConvert()
+        r = ret["results"]["bindings"][0]
+        permanent_url = None
+        if "permanentURL" in r:
+            permanent_url = r["permanentURL"]["value"]
+        image_url = None
+        if "image_url" in r:
+            image_url = r["image_url"]["value"]
+        print(image_url, permanent_url)
+        if image_url is None and permanent_url:
+            image_url = get_nls_document_page_image_url(permanent_url)
+        result = {
+            "number": r["number"]["value"],
+            "permanent_url": permanent_url,
+            "image_url": image_url
+        }
+    except Exception as e:
+        print(e)
+
+    # print(result)
+    return result
+
+
+def get_concept_external_records(concept_uri: str) -> list[dict]:
+    """
+    Get linked external records of a concept from the graph.
+    :param concept_uri: the uri of the concept.
+    :return: a list of external records with their uris and types.
+    """
+    formatted_concept_uri = "<" + concept_uri + ">"
+    external_records = []
+    hto_sparql = SPARQLWrapper(hto_endpoint)
+    hto_sparql.setReturnFormat(JSON)
+    query = """
+            PREFIX hto: <https://w3id.org/hto#>
+            PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
+            SELECT ?record ?type WHERE {
+                %s a hto:Concept;
+                    hto:hadConceptRecord ?record.
+                ?record a hto:ExternalRecord;
+                    hto:hasResourceType ?type.
+            }
+    """ % formatted_concept_uri
+    hto_sparql.setQuery(query)
+    try:
+        ret = hto_sparql.queryAndConvert()
+        for r in ret["results"]["bindings"]:
+            record_uri = r["record"]["value"]
+            type_uri = r["type"]["value"]
+            external_records.append({
+                "record_uri": record_uri,
+                "type_uri": type_uri
+            })
+    except Exception as e:
+        print(e)
+
+    return external_records
+
+
+def get_broadside_info(broadside_uri):
+    broadside_uri = "<" + broadside_uri + ">"
     result = {}
     hto_sparql = SPARQLWrapper(hto_endpoint)
     hto_sparql.setReturnFormat(JSON)
@@ -576,25 +685,53 @@ def get_page_display_info(page_uri):
             PREFIX hto: <https://w3id.org/hto#>
             PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
             SELECT * WHERE {
-                %s a hto:Page;
-                    hto:number ?number;
-                    hto:permanentURL ?permanentURL.}
-            """ % page_uri
+                %s a hto:Broadside;
+                    hto:name ?name;
+                    rdfs:label ?label;
+                    hto:title ?vol_title;
+                    hto:startsAtPage ?start_page;
+                    hto:endsAtPage ?end_page.
+                OPTIONAL {%s hto:permanentURL ?broadside_permanent_url}
+                ?series a hto:Series;
+                    hto:hadMember %s;
+                    hto:yearPublished ?year_published;
+                    hto:genre ?genre;
+                    hto:printedAt ?printedAt.
+                ?printedAt rdfs:label ?print_location.
+                ?collection hto:hadMember ?series;
+                    hto:name ?collection_name.   
+            }
+            """ % (broadside_uri, broadside_uri, broadside_uri)
     # print(query)
     hto_sparql.setQuery(query)
     try:
         ret = hto_sparql.queryAndConvert()
         r = ret["results"]["bindings"][0]
-        permanent_url = r["permanentURL"]["value"]
-        image_url = get_nls_document_page_image_url(permanent_url)
+        start_page_uri = r["start_page"]["value"]
+        end_page_uri = r["end_page"]["value"]
+        start_page = get_page_display_info("<" + start_page_uri + ">")
+        start_page["uri"] = start_page_uri
+        end_page = get_page_display_info("<" + end_page_uri + ">")
+        end_page["uri"] = end_page_uri
         result = {
-            "number": r["number"]["value"],
-            "permanent_url": r["permanentURL"]["value"],
-            "image_url": image_url
+            "collection": {
+                "name": r["collection_name"]["value"],
+                "uri": r["collection"]["value"]
+            },
+            "series": {
+                "uri": r["series"]["value"],
+                "genre": r["genre"]["value"],
+                "print_location": r["print_location"]["value"],
+                "year_published": r["year_published"]["value"]
+            },
+            "name": r["vol_title"]["value"],
+            "start_page": start_page,
+            "end_page": end_page
         }
     except Exception as e:
         print(e)
-
+    descriptions = get_descriptions(broadside_uri)
+    result["descriptions"] = descriptions
     # print(result)
     return result
 
@@ -683,9 +820,17 @@ def get_page_content(page_uri):
     try:
         ret = hto_sparql.queryAndConvert()
         for r in ret["results"]["bindings"]:
+            uri = r["desc"]["value"]
+            plain_description = r["description_content"]["value"]
+            location_annotations = get_location_annotations(uri)
+            location_uris = [annotation["uri"] for annotation in location_annotations]
+            # print(location_uris)
+            locations = get_locations(location_uris)
+            annotated_description = get_annotated_description(plain_description, location_annotations)
             result.append({
                 "uri": r["desc"]["value"],
-                "description": r["description_content"]["value"],
+                "description": annotated_description,
+                "locations": locations,
                 "text_quality": r["textQuality"]["value"]
             })
     except Exception as e:
@@ -693,6 +838,125 @@ def get_page_content(page_uri):
 
     # print(result)
     return result
+
+def get_locations(location_uris):
+    location_uris = ["<" + uri + ">" for uri in location_uris]
+    locations_query_values = "\n".join(location_uris)
+    #print(locations_query_values)
+    hto_sparql = SPARQLWrapper(hto_endpoint)
+    hto_sparql.setReturnFormat(JSON)
+    query = """
+                 PREFIX hto: <https://w3id.org/hto#>
+                 PREFIX crm: <http://www.cidoc-crm.org/cidoc-crm/>
+                 PREFIX geo: <http://www.opengis.net/ont/geosparql#>
+                 PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
+                 SELECT * WHERE {
+                    VALUES ?location { 
+                        %s
+                    }
+                    ?location a crm:SP2_Phenomenal_Place;
+                        rdfs:label ?location_name;
+                        geo:hasCentroid ?centroid.
+                    ?centroid a crm:SP6_Declarative_Place;
+                        geo:asGeoJSON ?geo_json.
+                }
+                """ % (locations_query_values)
+    #print(query)
+    hto_sparql.setQuery(query)
+    locations = []
+    try:
+        ret = hto_sparql.queryAndConvert()
+        for r in ret["results"]["bindings"]:
+            geo_json = r["geo_json"]["value"]
+            geo_data = json.loads(geo_json)
+            coordinates = geo_data["coordinates"]
+            locations.append({
+                "uri": r["location"]["value"],
+                "name": r["location_name"]["value"],
+                "lat": coordinates[1],
+                "long": coordinates[0]
+            })
+
+    except Exception as e:
+        print(e)
+
+    return locations
+
+
+def annotations_to_list(target_text, target_annotations):
+    if target_annotations is None or len(target_annotations) == 0:
+        return [{
+            "type": "plain",
+            "value": target_text
+        }]
+
+    result = []
+    previous_end = 0
+    for annotation in target_annotations:
+        start_index = annotation["start"]
+        end_index = annotation["end"]
+        if start_index > previous_end:
+            result.append({
+            "type": "plain",
+            "value": target_text[previous_end:start_index],
+        })
+        result.append({
+            "type": annotation["type"],
+            "value": target_text[start_index:end_index],
+            "uri": annotation["uri"]
+        })
+        previous_end = end_index
+
+    # add last plain text chunk
+    if previous_end < len(target_text) - 1:
+        result.append({
+            "type": "plain",
+            "value": target_text[previous_end:]
+        })
+    return result
+
+
+def get_location_annotations(description_uri):
+    description_uri = "<" + description_uri + ">"
+    hto_sparql = SPARQLWrapper(hto_endpoint)
+    hto_sparql.setReturnFormat(JSON)
+    query = """
+             PREFIX hto: <https://w3id.org/hto#>
+             PREFIX oa: <http://www.w3.org/ns/oa#>
+             PREFIX crm: <http://www.cidoc-crm.org/cidoc-crm/>
+             SELECT ?location ?start_index ?end_index WHERE {
+                %s a hto:OriginalDescription.
+                ?annotation a oa:Annotation;
+                    oa:hasBody ?location;
+                    oa:hasTarget ?specific_words.
+                ?location a crm:SP2_Phenomenal_Place.
+                ?specific_words oa:hasSource %s;
+                    oa:hasSelector ?selector.
+                ?selector a oa:TextPositionSelector;
+                    oa:start ?start_index;
+                    oa:end ?end_index.
+            } ORDER BY ?start_index
+            """ % (description_uri, description_uri)
+    hto_sparql.setQuery(query)
+    annotations = []
+    try:
+        ret = hto_sparql.queryAndConvert()
+        for r in ret["results"]["bindings"]:
+            annotations.append({
+                "uri": r["location"]["value"],
+                "type": "location",
+                "start": int(r["start_index"]["value"]),
+                "end": int(r["end_index"]["value"])
+            })
+
+    except Exception as e:
+        print(e)
+
+    return annotations
+
+
+def get_annotated_description(plain_description, location_annotations):
+    return annotations_to_list(plain_description, location_annotations)
 
 
 def get_term_definitions(term_uri):
@@ -715,9 +979,55 @@ def get_term_definitions(term_uri):
     try:
         ret = hto_sparql.queryAndConvert()
         for r in ret["results"]["bindings"]:
+            uri = r["desc"]["value"]
+            plain_description = r["description_content"]["value"]
+            location_annotations = get_location_annotations(uri)
+            location_uris = [annotation["uri"] for annotation in location_annotations]
+            #print(location_uris)
+            locations = get_locations(location_uris)
+            annotated_description = get_annotated_description(plain_description, location_annotations)
             result.append({
                 "uri": r["desc"]["value"],
-                "description": r["description_content"]["value"],
+                "description": annotated_description,
+                "locations": locations,
+                "text_quality": r["textQuality"]["value"]
+            })
+    except Exception as e:
+        print(e)
+
+    # print(result)
+    return result
+
+
+def get_descriptions(record_uri):
+    result = []
+    hto_sparql = SPARQLWrapper(hto_endpoint)
+    hto_sparql.setReturnFormat(JSON)
+    query = """
+            PREFIX hto: <https://w3id.org/hto#>
+            PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
+            SELECT * WHERE {
+                %s hto:hasOriginalDescription ?desc.
+                ?desc hto:text ?description_content;
+                    hto:hasTextQuality ?textQuality.
+                }
+            """ % record_uri
+    # print(query)
+    hto_sparql.setQuery(query)
+    try:
+        ret = hto_sparql.queryAndConvert()
+        for r in ret["results"]["bindings"]:
+            uri = r["desc"]["value"]
+            plain_description = r["description_content"]["value"]
+            location_annotations = get_location_annotations(uri)
+            location_uris = [annotation["uri"] for annotation in location_annotations]
+            #print(location_uris)
+            locations = get_locations(location_uris)
+            annotated_description = get_annotated_description(plain_description, location_annotations)
+            result.append({
+                "uri": r["desc"]["value"],
+                "description": annotated_description,
+                "locations": locations,
                 "text_quality": r["textQuality"]["value"]
             })
     except Exception as e:
@@ -855,6 +1165,123 @@ def get_term_info(term_uri):
     return result
 
 
+def get_location_record_info(record_uri):
+    """
+    This function retrieves the metadata, and textual content of a location record in knowledge graph.
+    :param record_uri: the uri of a record
+    :return: the metadata, and textual content of a term, the format is:
+    {
+        name: "Term name",
+        alter_names: [],
+        collection: {
+            name: "Encyclopaedia Britannica",
+            uri: ''
+        }
+        volume: {
+            title: "",
+            uri: ''
+        }
+        year_published: "",
+        genre: "encyclopedia",
+        print_location: "Edinburgh"
+        start_page: {
+            number: 1,
+            uri: ''
+        },
+        end_page: {
+            number: 1,
+            uri: ''
+        }
+        descriptions: [
+        {
+            description: '',
+            uri: '',
+            text_quality: ''
+        }
+        ]
+    }
+    """
+    record_uri = "<" + record_uri + ">"
+    result = {}
+    hto_sparql = SPARQLWrapper(hto_endpoint)
+    hto_sparql.setReturnFormat(JSON)
+    query = """
+        PREFIX hto: <https://w3id.org/hto#>
+        PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
+        SELECT * WHERE {
+            %s a hto:LocationRecord;
+                hto:name ?name;
+                hto:startsAtPage ?start_page;
+                hto:endsAtPage ?end_page.
+            ?start_page hto:number ?s_page_num.
+  			OPTIONAL {?start_page hto:permanentURL ?start_page_permanent_url}
+            ?end_page hto:number ?e_page_num.
+  			OPTIONAL {?end_page hto:permanentURL ?end_page_permanent_url}
+            ?vol a hto:Volume;
+                hto:title ?vol_title;
+                hto:hadMember ?start_page;
+                hto:permanentURL ?volume_permanent_url.
+            ?series a hto:Series;
+                hto:hadMember ?vol;
+                hto:yearPublished ?year_published;
+                hto:genre ?genre;
+                hto:printedAt ?printedAt.
+            ?printedAt rdfs:label ?print_location.
+            ?collection hto:hadMember ?series;
+                hto:name ?collection_name.
+            }
+        """ % (record_uri)
+    # print(query)
+    hto_sparql.setQuery(query)
+    try:
+        ret = hto_sparql.queryAndConvert()
+        r = ret["results"]["bindings"][0]
+        start_page_num = r["s_page_num"]["value"]
+        start_page_permanent_url = None
+        if "start_page_permanent_url" in r:
+            start_page_permanent_url = r["start_page_permanent_url"]["value"]
+        end_page_permanent_url = None
+        if "end_page_permanent_url" in r:
+            end_page_permanent_url = r["end_page_permanent_url"]["value"]
+        end_page_num = r["e_page_num"]["value"]
+        year_published = r["year_published"]["value"]
+        record_name = r["name"]["value"]
+        result = {
+            "collection": {
+                "name": r["collection_name"]["value"],
+                "uri": r["collection"]["value"]
+            },
+            "volume": {
+                "title": r["vol_title"]["value"],
+                "uri": r["vol"]["value"],
+                "permanent_url": r["volume_permanent_url"]["value"]
+            },
+            "series": {
+                "uri": r["series"]["value"],
+                "genre": r["genre"]["value"],
+                "print_location": r["print_location"]["value"],
+                "year_published": year_published
+            },
+            "record_name": record_name,
+            "start_page": {
+                "number": start_page_num,
+                "uri": r["start_page"]["value"],
+                "permanent_url": start_page_permanent_url
+            },
+            "end_page": {
+                "number": end_page_num,
+                "uri": r["end_page"]["value"],
+                "permanent_url": end_page_permanent_url
+            }
+        }
+    except Exception as e:
+        print(e)
+    descriptions = get_descriptions(record_uri)
+    result["descriptions"] = descriptions
+    # print(result)
+    return result
+
+
 def get_triples(entry_uri):
     if entry_uri is None:
         return None
@@ -862,8 +1289,10 @@ def get_triples(entry_uri):
     hto_sparql = SPARQLWrapper(hto_endpoint)
     hto_sparql.setReturnFormat(JSON)
     hto_sparql.setQuery("""
+        PREFIX hto: <https://w3id.org/hto#>
         SELECT * WHERE {
             %s ?pre ?obj
+            FILTER (?pre != hto:hasAnnotation)
         }
         """ % entry_uri)
     try:

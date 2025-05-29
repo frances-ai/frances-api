@@ -169,9 +169,14 @@ def search(query):
     return response
 
 
-def get_term_info(term_uri):
-    index_name = 'hto_eb'
-    response = elasticsearch.get(index=index_name, id=term_uri)
+def get_document_info(doc_id:str, index_name:str) -> dict:
+    """
+    Get document info with give doc_id and index_name, raise error if not found.
+    :param doc_id: doc id of the document.
+    :param index_name: index name of document.
+    :return:
+    """
+    response = elasticsearch.get(index=index_name, id=doc_id)
     result = response['_source']
     return result
 
@@ -207,14 +212,23 @@ def exact_knn_search(query):
     }
     :return: elastic search result
     """
-    index_name = "hto_eb"
+    index_names = query.get('index_names', 'hto_*')
     body = {
         "size": query.get('size', 20),
         "from": query.get('from', 0),
         "query": {
             "script_score": {
                 "query": {
-                    "match_all": {}
+                    "bool": {
+                        "must": {
+                            "match_all": {}
+                        },
+                        "filter": {
+                            "term": {
+                                "collection": query.get('collection', "Encyclopedia Britannica"),
+                            }
+                        }
+                    }
                 },
                 "script": {
                     "source": "cosineSimilarity(params.query_embedding, 'embedding') + 1.0",
@@ -225,5 +239,5 @@ def exact_knn_search(query):
             }
         }
     }
-    response = elasticsearch.search(index=index_name, body=body)
+    response = elasticsearch.search(index=index_names, body=body)
     return response

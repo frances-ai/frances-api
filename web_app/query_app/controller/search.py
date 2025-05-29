@@ -11,6 +11,13 @@ from .utils import normalize_text, get_word_frequencies
 
 search = Blueprint("search", __name__, url_prefix="/api/v1/search")
 
+collections_indices = {
+    "Encyclopaedia Britannica": "hto_eb",
+    "Gazetteers of Scotland": "hto_gazetteers",
+    "Broadsides printed in Scotland": "hto_broadsides",
+    "Chapbooks printed in Scotland": "hto_chapbooks",
+    "Ladies’ Edinburgh Debating Society": "hto_ladies"
+}
 
 @search.get("/")
 @limiter.limit("30/minute")  # 30 requests per minute
@@ -29,6 +36,7 @@ def text_search():
         'order': request.args.get('order', "desc"),
         'from': (request.args.get('page', 1, type=int) - 1) * size,
         'size': size,
+        'index_names': 'hto_*'
     }
     print(query_params)
 
@@ -52,7 +60,7 @@ def text_search():
     # Call the search service with the constructed query dictionary
     current_app.logger.info(f"search with options: {query_params}")
     try:
-        #print(query_params)
+        print(query_params)
         results = search_service.search(query_params)
         return jsonify(results.body), HTTPStatus.OK
     except Exception as e:
@@ -68,7 +76,10 @@ def retrieve_term_info():
     current_app.logger.info(f"retrieve term info for {term_uri}")
     #print(term_path)
     term_info = sparql_queries.get_term_info(term_uri)
-    es_term_info = search_service.get_term_info(term_uri)
+    collection_name = term_info['collection']['name']
+    collection_name = collection_name[:collection_name.rfind(' Collection')]
+    index_name = collections_indices[collection_name]
+    es_term_info = search_service.get_document_info(term_uri, index_name)
     term_info["concept_uri"] = es_term_info["concept_uri"]
     term_info["alter_names"] = es_term_info["alter_names"]
     term_info["reference_terms"] = es_term_info["reference_terms"]
@@ -78,30 +89,33 @@ def retrieve_term_info():
     return jsonify(term_info), HTTPStatus.OK
 
 
-@search.post("/similar_terms")
+@search.get("/location_record")
 @limiter.limit("30/minute")  # 30 requests per minute
-def retrieve_similar_terms():
-    term_uri = request.json.get("term_uri")
-    #print(term_uri)
-    term_info = search_service.get_term_info(term_uri)
-    # get the top 20 most similar terms, expect itself.
-    query = {
-        "query_embedding": term_info["embedding"],
-        "from": 1,
-        "size": 21
-    }
-    threshold = 0.6
-    knn_search_response = search_service.exact_knn_search(query)
-    similar_terms = knn_search_response.body["hits"]["hits"]
-    similar_terms_list = []
-    for similar_term in similar_terms:
-        if similar_term["_score"] > threshold:
-            similar_terms_list.append({
-                "uri": similar_term["_id"],
-                "name": similar_term["_source"]["name"],
-                "year": similar_term["_source"]["year_published"]
-            })
-    return jsonify(similar_terms_list), HTTPStatus.OK
+def retrieve_location_record_info():
+    record_path = request.args.get('record_path', type=str)
+    record_uri = "https://w3id.org/hto/" + record_path
+    current_app.logger.info(f"retrieve location record info for {record_uri}")
+    #print(record_path)
+    record_info = sparql_queries.get_location_record_info(record_uri)
+    collection_name = record_info['collection']['name']
+    collection_name = collection_name[:collection_name.rfind(' Collection')]
+    index_name = collections_indices[collection_name]
+    es_record_info = search_service.get_document_info(record_uri, index_name)
+    record_info["concept_uri"] = es_record_info["concept_uri"]
+    record_info["alter_names"] = es_record_info["alter_names"]
+    record_info["references"] = es_record_info["references"]
+    return jsonify(record_info), HTTPStatus.OK
+
+
+@search.get("/broadside")
+@limiter.limit("30/minute")  # 30 requests per minute
+def retrieve_broadside_info():
+    record_path = request.args.get('record_path', type=str)
+    record_uri = "https://w3id.org/hto/" + record_path
+    current_app.logger.info(f"retrieve broadside info for {record_uri}")
+    #print(record_path)
+    record_info = sparql_queries.get_broadside_info(record_uri)
+    return jsonify(record_info), HTTPStatus.OK
 
 
 @search.get("/page_display")
@@ -109,9 +123,18 @@ def retrieve_similar_terms():
 def retrieve_page_display_info():
     page_path = request.args.get('page_path', type=str)
     page_uri = "<https://w3id.org/hto/" + page_path + ">"
-    #print(page_path)
     page_info = sparql_queries.get_page_display_info(page_uri)
     return jsonify(page_info), HTTPStatus.OK
+
+
+@search.get("/page_exists")
+@limiter.limit("30/minute")  # 30 requests per minute
+def check_page_exists():
+    page_path = request.args.get('page_path', type=str)
+    page_uri = "<https://w3id.org/hto/" + page_path + ">"
+    print(page_uri)
+    page_exists = sparql_queries.page_exists(page_uri)
+    return jsonify(page_exists), HTTPStatus.OK
 
 
 @search.get("/page")
@@ -125,28 +148,64 @@ def retrieve_page_info():
     return jsonify(page_info), HTTPStatus.OK
 
 
-@search.post("/similar_term_descriptions")
+@search.post("/similar_records")
 @limiter.limit("30/minute")  # 30 requests per minute
-def retrieve_similar_term_descriptions():
-    term_uri = request.json.get("term_uri")
-    #print(term_uri)
-    term_info = search_service.get_term_info(term_uri)
+def retrieve_similar_records():
+    record_uri = request.json.get("record_uri")
+    collection_name = request.json.get("collection", "Encyclopedia Britannica")
+    print(collection_name)
+    index_name = collections_indices[collection_name]
+    record_info = search_service.get_document_info(record_uri, index_name)
+    # get the top 20 most similar terms, expect itself.
+    query = {
+        "query_embedding": record_info["embedding"],
+        "from": 1,
+        "size": 21,
+        "collection": collection_name,
+        "index_names": index_name
+    }
+    threshold = 0.6
+    knn_search_response = search_service.exact_knn_search(query)
+    similar_records = knn_search_response.body["hits"]["hits"]
+    similar_records_list = []
+    for similar_term in similar_records:
+        if similar_term["_score"] > threshold:
+            similar_records_list.append({
+                "uri": similar_term["_id"],
+                "name": similar_term["_source"]["name"],
+                "year": similar_term["_source"]["year_published"]
+            })
+    return jsonify(similar_records_list), HTTPStatus.OK
+
+
+@search.post("/similar_record_descriptions")
+@limiter.limit("30/minute")  # 30 requests per minute
+def retrieve_similar_record_descriptions():
+    record_uri = request.json.get("record_uri")
+    collection_name = request.json.get("collection", "Encyclopedia Britannica")
+    print(collection_name)
+    index_name = collections_indices[collection_name]
+    record_info = search_service.get_document_info(record_uri, index_name)
 
     # get the top 20 most similar terms, since we want itself to be included in the final result, we will check top 21
     # similar terms, which will include itself.
     query = {
-        "query_embedding": term_info["embedding"],
+        "query_embedding": record_info["embedding"],
         "from": 0,
-        "size": 21
+        "size": 21,
+        "collection": collection_name,
+        "index_names": index_name
     }
     knn_search_response = search_service.exact_knn_search(query)
 
-    similar_terms = knn_search_response["hits"]["hits"]
+    similar_records = knn_search_response["hits"]["hits"]
 
     highest_score_per_year = {}
 
     # Filter for highest score per year
-    for obj in similar_terms:
+    for obj in similar_records:
+        # drop the embedding
+        del obj["_source"]['embedding']
         year = obj['_source']['year_published']
         score = obj['_score']
         # If the year is not in the dictionary or this object has a higher score, update the entry
@@ -158,29 +217,33 @@ def retrieve_similar_term_descriptions():
     return jsonify(sorted_list), HTTPStatus.OK
 
 
-@search.get("/word_frequencies")
+@search.post("/word_frequencies")
 @limiter.limit("30/minute")  # 30 requests per minute
 def word_frequencies():
-    term_name = request.args.get('term_name')
-    if term_name is None:
-        return jsonify({"error": "Term name is required!"}), HTTPStatus.BAD_REQUEST
+    record_name = request.json.get('record_name')
+    if record_name is None:
+        return jsonify({"error": "Record name is required!"}), HTTPStatus.BAD_REQUEST
+
+    collection_name = request.json.get("collection", "Encyclopedia Britannica")
+    index_name = collections_indices[collection_name]
 
     # Get all term information which have the given term name.
     # assume there are less than 1000 hits
     query = {
         'search_field': "name.keyword",
-        'keyword': term_name,
+        'keyword': record_name,
         'exact_match': True,
-        'collection': 'Encyclopaedia Britannica',
-        'size': 100
+        'collection': collection_name,
+        'size': 100,
+        'index_names': index_name
     }
     response = search_service.search(query)
-    terms = response["hits"]["hits"]
+    records = response["hits"]["hits"]
     # Get all descriptions of terms for each year
     year_descriptions = {}
-    for term in terms:
-        description = term["_source"]["description"]
-        year = term["_source"]["year_published"]
+    for record in records:
+        description = record["_source"]["description"]
+        year = record["_source"]["year_published"]
         normalised_description = normalize_text(description)
         if year in year_descriptions:
             year_descriptions[year] += " " + normalised_description
@@ -212,7 +275,8 @@ def get_term_records_by_concept_uri():
         'exact_match': True,
         'sort': 'year_published',
         'output_fields': ['embedding', 'description', 'year_published', 'vol_title', 'collection', 'sentiment'],
-        'size': 100
+        'size': 100,
+        'index_names': 'hto_*'
     }
     response = search_service.search(query)
     terms = response.body["hits"]["hits"]
@@ -242,27 +306,49 @@ def get_term_records_by_concept_uri():
 
     # get the latest item record (from wikidata, or dbpedia) linked to this concept
     # get wikidata item linked to this concept
-    wiki_items = search_service.get_item_by_concept_uri(concept_uri, "wikidata_items")
-    dbpedia_items = search_service.get_item_by_concept_uri(concept_uri, "dbpedia_items")
+    external_items = sparql_queries.get_concept_external_records(concept_uri)
+    wiki_item_uri = None
+    dbpedia_item_uri = None
+
+    for item in external_items:
+        if item['type_uri'] == str(sparql_queries.hto.Wikidata_Item):
+            wiki_item_uri = item['record_uri']
+        elif item['type_uri'] == str(sparql_queries.hto.Dbpedia_Item):
+            dbpedia_item_uri = item['record_uri']
+
+    wiki_item = None
+    dbpedia_item = None
+    if wiki_item_uri:
+        try:
+            wiki_item = search_service.get_document_info(wiki_item_uri, "wikidata_items")
+        except:
+            pass
+
+    if dbpedia_item_uri:
+        try:
+            dbpedia_item = search_service.get_document_info(dbpedia_item_uri, "dbpedia_items")
+        except:
+            pass
+
     latest_item = None
     source = None
-    if len(wiki_items) == 1:
-        latest_item = wiki_items[0]
+    if wiki_item:
+        latest_item = wiki_item
         wiki_similarity = cosine_similarity([terms[-1]["_source"]['embedding']],
-                                         [wiki_items[0]['embedding']])[0, 0]
+                                         [wiki_item['embedding']])[0, 0]
         similarity = wiki_similarity
         source = "Wikidata"
 
-    if len(dbpedia_items) == 1:
-        latest_item = dbpedia_items[0]
+    if dbpedia_item:
+        latest_item = dbpedia_item
         dbpedia_similarity = cosine_similarity([terms[-1]["_source"]['embedding']],
-                                            [dbpedia_items[0]['embedding']])[0, 0]
+                                            [dbpedia_item['embedding']])[0, 0]
         similarity = dbpedia_similarity
         source = "DBpedia"
 
-    if len(wiki_items) == 1 and len(dbpedia_items) == 1:
+    if dbpedia_item and wiki_item:
         if wiki_similarity > dbpedia_similarity:
-            latest_item = wiki_items[0]
+            latest_item = wiki_item
             similarity = wiki_similarity
             source = "Wikidata"
 
