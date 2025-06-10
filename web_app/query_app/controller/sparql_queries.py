@@ -1,7 +1,6 @@
 import json
 
 from SPARQLWrapper import SPARQLWrapper, JSON
-from .utils import get_kg_url
 from ..resolver import get_hto_kg_endpoint
 from rdflib import Namespace
 
@@ -839,6 +838,7 @@ def get_page_content(page_uri):
     # print(result)
     return result
 
+
 def get_locations(location_uris):
     location_uris = ["<" + uri + ">" for uri in location_uris]
     locations_query_values = "\n".join(location_uris)
@@ -1037,6 +1037,82 @@ def get_descriptions(record_uri):
     return result
 
 
+def get_rdf_types(entity_uri):
+    result = []
+    entity_uri = "<" + entity_uri + ">"
+    hto_sparql = SPARQLWrapper(hto_endpoint)
+    hto_sparql.setReturnFormat(JSON)
+    query = """
+    SELECT ?type WHERE { %s a ?type. }
+    """ % entity_uri
+    hto_sparql.setQuery(query)
+    try:
+        ret = hto_sparql.queryAndConvert()
+        for r in ret["results"]["bindings"]:
+            type_uri = r["type"]["value"]
+            result.append(type_uri)
+    except Exception as e:
+        print(e)
+    return result
+
+
+def get_location_references(record_uri):
+    result = []
+    hto_sparql = SPARQLWrapper(hto_endpoint)
+    hto_sparql.setReturnFormat(JSON)
+    query = """
+    PREFIX geo: <http://www.opengis.net/ont/geosparql#>
+    PREFIX hto: <https://w3id.org/hto#>
+    PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
+    PREFIX crm: <http://www.cidoc-crm.org/cidoc-crm/>
+    SELECT ?place ?place_name ?geo_json ?time_span_label WHERE {
+      %s a hto:LocationRecord;
+        hto:refersTo ?place.
+      ?place a crm:SP2_Phenomenal_Place;
+        rdfs:label ?place_name;
+        geo:hasCentroid ?centroid.
+      ?centroid a crm:SP6_Declarative_Place;
+        geo:asGeoJSON ?geo_json.
+      ?spacetime a crm:E92_Spacetime_Volume;
+        crm:P161_has_spatial_projection ?place;
+        crm:P160_has_temporal_projection ?time_span.
+      ?time_span rdfs:label ?time_span_label.
+    } 
+    """ % record_uri
+    hto_sparql.setQuery(query)
+    try:
+        ret = hto_sparql.queryAndConvert()
+        for r in ret["results"]["bindings"]:
+            geo_json = r["geo_json"]["value"]
+            geo_data = json.loads(geo_json)
+            coordinates = geo_data["coordinates"]
+            result.append({
+                "uri": r["place"]["value"],
+                "name": r["place_name"]["value"],
+                "lat": coordinates[1],
+                "long": coordinates[0],
+                "time-span": r["time_span_label"]["value"]
+            })
+    except Exception as e:
+        print(e)
+    return result
+
+
+def add_location_reference_to_annotated_descriptions(descriptions, location_references):
+    most_recent_location_reference = location_references[0]
+    for index in range(1, len(location_references)):
+        reference = location_references[index]
+        # TODO time-span now is year based, but it will extend to be more complex, so this need to be changed accordingly in the future.
+        if reference['time-span'] > most_recent_location_reference['time-span']:
+            most_recent_location_reference = reference
+
+    # add location references to annotated descriptions
+    for description in descriptions:
+        locations = description["locations"]
+        if len(locations) > 0:
+            locations.insert(0, most_recent_location_reference)
+
+
 def get_term_info(term_uri):
     """
     This function retrieves the metadata, and textual content of a term record in knowledge graph.
@@ -1161,6 +1237,9 @@ def get_term_info(term_uri):
 
     descriptions = get_term_definitions(term_uri)
     result["descriptions"] = descriptions
+    location_references = get_location_references(term_uri)
+    result["location_references"] = location_references
+    add_location_reference_to_annotated_descriptions(descriptions, location_references)
     # print(result)
     return result
 
@@ -1278,6 +1357,9 @@ def get_location_record_info(record_uri):
         print(e)
     descriptions = get_descriptions(record_uri)
     result["descriptions"] = descriptions
+    location_references = get_location_references(record_uri)
+    result["location_references"] = location_references
+    add_location_reference_to_annotated_descriptions(descriptions, location_references)
     # print(result)
     return result
 
