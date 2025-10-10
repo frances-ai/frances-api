@@ -1,4 +1,4 @@
-FROM python:3.9-slim-buster
+FROM python:3.11-bullseye
 
 WORKDIR /web_app
 
@@ -7,13 +7,13 @@ WORKDIR /web_app
 ENV PYSPARK_PYTHON=/usr/local/bin/python3
 ENV PYSPARK_DRIVER_PYTHON=usr/local/bin/python3
 
-# copy code files
-COPY ./web_app /web_app
+# copy requirements
+COPY ./web_app/requirements.txt /tmp/requirements.txt
 
 # install dependencies
 RUN pip install --no-cache-dir --upgrade pip
 RUN pip install --no-cache-dir torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cpu
-RUN pip install --no-cache-dir -r /web_app/requirements.txt
+RUN pip install --no-cache-dir -r /tmp/requirements.txt
 RUN python -m nltk.downloader all
 
 
@@ -21,4 +21,4 @@ RUN python -m nltk.downloader all
 EXPOSE 5000
 
 
-CMD ["gunicorn", "--timeout", "1000", "-w", "8", "-b", ":5000", "query_app:create_app()"]
+CMD ["gunicorn", "--forwarded-allow-ips", "10.22.10.2,10.22.10.23", "--timeout", "1000", "-w", "8", "-b", ":5000", "query_app:create_app()"]

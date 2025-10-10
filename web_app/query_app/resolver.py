@@ -18,9 +18,13 @@ FRANCES_FRONT_DEFAULT_PORT = "3000"
 FRANCES_FRONT_DEFAULT_DOMAIN = "127.0.0.1"
 
 LOCAL_DEFOE_GRPC_CHANNEL = "localhost:5052"
-LOCAL_DATABASE_HOST = "127.0.1"
-DATABASE_USER = "frances"
-DATABASE_PASSWORD = "frances"
+#LOCAL_DATABASE_HOST = "127.0.1"
+#DATABASE_USER = "frances"
+#DATABASE_PASSWORD = "frances"
+DATABASE_HOST = os.getenv('API_DATABASE_HOST', 'localhost')
+DATABASE_USER = os.getenv('POSTGRES_USER', 'frances')
+DATABASE_PASSWORD = os.getenv('POSTGRES_PASSWORD', 'frances')
+
 
 database = None
 defoe_service = None
@@ -88,13 +92,13 @@ def get_database():
     if database != None:
         return database
     database_config = {
-        "host": LOCAL_DATABASE_HOST,
+        "host": DATABASE_HOST,
         "user": DATABASE_USER,
         "password": DATABASE_PASSWORD
     }
-    if MODE == "deploy":
-        logging.info("deploy")
-        database_config["host"] = "database"
+#    if MODE == "deploy":
+#        logging.info("deploy")
+#        database_config["host"] = "database"
     database = Database(database_config)
     add_init_user(database)
     return database

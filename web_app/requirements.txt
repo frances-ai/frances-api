@@ -16,7 +16,7 @@ google-cloud-storage
 google-cloud-dataproc
 Flask-Limiter
 sendgrid
-elasticsearch
+elasticsearch==8.15.1
 gunicorn
 sentence-transformers
 numpy<2
