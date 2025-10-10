@@ -1,4 +1,4 @@
-FROM python:3.9-slim-buster
+FROM python:3.10-slim-buster
 
 WORKDIR /web_app
 
@@ -12,6 +12,7 @@ COPY ./web_app /web_app
 
 # install dependencies
 RUN pip install --no-cache-dir --upgrade pip
+RUN pip install -U setuptools
 RUN pip install --no-cache-dir torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cpu
 RUN pip install --no-cache-dir -r /web_app/requirements.txt
 RUN python -m nltk.downloader all
@@ -20,5 +21,4 @@ RUN python -m nltk.downloader all
 # required port
 EXPOSE 5000
 
-
-CMD ["gunicorn", "--timeout", "1000", "-w", "8", "-b", ":5000", "query_app:create_app()"]
+CMD ["sh start.prod.sh"]
