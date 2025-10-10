@@ -32,7 +32,6 @@ class DatabaseConfig:
 
 
 def record_to_defoe_query_task(record):
-    print(record)
     config_record = record[:16]
     task_record = record[16:]
     return DefoeQueryTask(*task_record[0:2], DefoeQueryConfig(*config_record), *task_record[3:])
@@ -40,14 +39,13 @@ def record_to_defoe_query_task(record):
 
 class Database:
     def __init__(self, config):
-        print(config["host"])
         self.db = psycopg2.connect(
             host=config["host"],
             port="5432",
             user=config["user"],
             password=config["password"]
         )
-        self.create_tables()
+        #self.create_tables()
         #self.update_database()
 
     def rollback(self):

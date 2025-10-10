@@ -1,5 +1,5 @@
 import unittest
-from web_app.query_app.service.search_service import search
+from web_app.query_app.service.search_service import search, get_document_info
 
 
 class MyTestCase(unittest.TestCase):
@@ -33,6 +33,10 @@ class MyTestCase(unittest.TestCase):
             'size': 10,
         }
         results = search(query)
+        print(results)
+
+    def test_get_document(self):
+        results = get_document_info(doc_id="none", index_name="wikidata_items")
         print(results)
 
 
