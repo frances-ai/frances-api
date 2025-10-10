@@ -21,5 +21,4 @@ RUN python -m nltk.downloader all
 # required port
 EXPOSE 5000
 
-
-CMD ["gunicorn", "--timeout", "1000", "-w", "8", "-b", ":5000", "query_app:create_app()"]
+CMD ["sh start.prod.sh"]

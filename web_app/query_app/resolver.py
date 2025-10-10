@@ -2,9 +2,8 @@ import logging
 import os
 
 from elasticsearch import Elasticsearch
-from werkzeug.security import generate_password_hash
 
-from .db import Database, User
+from .db import Database
 
 from .service.defoe_service.dataproc_defoe_service import DataprocDefoeService
 from .service.defoe_service.local_defoe_service import LocalDefoeService
@@ -96,30 +95,7 @@ def get_database():
         logging.info("deploy")
         database_config["host"] = "database"
     database = Database(database_config)
-    add_init_user(database)
     return database
-
-
-def add_init_user(database):
-    email = "admin@frances-ai.com"
-    if database.get_user_by_email(email) is not None:
-        # user has been registered.
-        return
-
-    # add init user to database
-    # encode password
-    password = "admin123"
-    first_name = "Admin"
-    last_name = "Admin"
-    pwd_hash = generate_password_hash(password)
-
-    try:
-        user = User.create_new(first_name=first_name, last_name=last_name, password=pwd_hash, email=email)
-        database.add_active_user(user)
-        logging.info("user created!")
-    except Exception as e:
-        print(e)
-        database.rollback()
 
 
 MAIN_PYTHON_FILE_URI = "gs://frances2023/run_query.py"
