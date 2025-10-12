@@ -21,4 +21,4 @@ RUN python -m nltk.downloader all
 # required port
 EXPOSE 5000
 
-CMD ["sh start.prod.sh"]
+CMD ["sh","start.prod.sh"]
