@@ -1099,6 +1099,8 @@ def get_location_references(record_uri):
 
 
 def add_location_reference_to_annotated_descriptions(descriptions, location_references):
+    if len(location_references) == 0:
+        return
     most_recent_location_reference = location_references[0]
     for index in range(1, len(location_references)):
         reference = location_references[index]
