@@ -65,16 +65,17 @@ def get_clean_series_title(title):
 
 def get_series(collection_name):
     query = """
+    PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
+    PREFIX schema: <https://schema.org/>
     PREFIX hto: <https://w3id.org/hto#>
     SELECT ?title ?s ?y WHERE {
-           ?collection a hto:WorkCollection;
-                hto:name '%s';
-                hto:hadMember ?s.
-           ?s a hto:Series;
-                hto:title ?title ;
-                hto:yearPublished ?y.
-
-        } ORDER BY ASC(?y)""" % (collection_name + " Collection")
+      ?collection a hto:WorkCollection;
+                  rdfs:label '%s';
+                  schema:hasPart ?s.
+      ?s a hto:Series;
+         hto:title ?title ;
+         hto:yearPublished ?y.
+    } ORDER BY ASC(?y)""" % (collection_name + " Collection")
     sparqlW.setQuery(query)
     sparqlW.setReturnFormat(JSON)
     results = sparqlW.query().convert()
@@ -90,8 +91,9 @@ def get_series(collection_name):
 def get_volumes(uri):
     query = """
             PREFIX hto: <https://w3id.org/hto#>
+            PREFIX schema: <https://schema.org/>
             SELECT * WHERE {
-               %s hto:hadMember ?v .
+               %s schema:hasPart ?v .
                ?v a hto:Volume;
                   hto:number ?vnum ; 
                   hto:title ?title.
@@ -120,9 +122,10 @@ def get_volumes(uri):
 def get_numberOfVolumes(uri):
     query = """
     PREFIX hto: <https://w3id.org/hto#>
+    PREFIX schema: <https://schema.org/>
     SELECT (COUNT (DISTINCT ?v) as ?count)
         WHERE {
-            %s hto:hadMember ?v.
+            %s schema:hasPart ?v.
     	    ?v a hto:Volume. 
     }
     """ % (uri)
@@ -236,10 +239,11 @@ def get_volume_details(uri):
     uri_s = "<" + uri + ">"
     query = """
             PREFIX hto: <https://w3id.org/hto#>
+            PREFIX dct: <http://purl.org/dc/terms/>
             SELECT ?num ?title ?part ?volumeId ?permanentURL ?numberOfPages ?letters WHERE {
                %s hto:number ?num;
                   hto:title ?title;
-                  hto:volumeId ?volumeId;
+                  dct:identifier ?volumeId;
                   hto:permanentURL ?permanentURL;
                   hto:numberOfPages ?numberOfPages;
                OPTIONAL {%s hto:letters ?letters. }         
@@ -269,6 +273,7 @@ def get_es_full_details(uri):
     uri_s = "<" + uri + ">"
     query = """
             PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
+            PREFIX schema: <https://schema.org/>
             PREFIX hto: <https://w3id.org/hto#>
             SELECT * WHERE {
                 %s hto:yearPublished ?yearPublished;
@@ -282,8 +287,8 @@ def get_es_full_details(uri):
                    ?shelfLocator_uri rdfs:label ?shelfLocator.
                OPTIONAL {%s hto:subtitle ?es_subtitle}
                OPTIONAL {%s hto:number ?es_num}
-                ?collection hto:hadMember %s;
-                    hto:name ?collection_name.    
+                ?collection schema:hasPart %s;
+                    rdfs:label ?collection_name.    
             }
             """ % (uri_s, uri_s, uri_s, uri_s)
 
@@ -327,17 +332,19 @@ def get_volume_full_details(uri):
     uri_s = "<" + uri + ">"
     query = """
             PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
+            PREFIX schema: <https://schema.org/>
             PREFIX hto: <https://w3id.org/hto#>
+            PREFIX dct: <http://purl.org/dc/terms/>
             SELECT * WHERE {
                 %s a hto:Volume;
                     hto:number ?vol_num;
                     hto:title ?vol_title;
-                    hto:volumeId ?volumeId;
+                    dct:identifier ?volumeId;
                     hto:permanentURL ?vol_permanentURL;
                     hto:numberOfPages ?vol_numberOfPages;
                 OPTIONAL {%s hto:letters ?letters. }         
                 OPTIONAL {%s hto:part ?part. }  
-                ?es hto:hadMember %s;
+                ?es schema:hasPart %s;
                     hto:yearPublished ?yearPublished;
                    hto:title ?es_title;
                    hto:printedAt ?printed_uri;
@@ -349,8 +356,8 @@ def get_volume_full_details(uri):
                    ?shelfLocator_uri rdfs:label ?shelfLocator.
                OPTIONAL {?es hto:subtitle ?es_subtitle}
                OPTIONAL {?es hto:number ?es_num}
-                ?collection hto:hadMember ?es;
-                    hto:name ?collection_name.    
+                ?collection schema:hasPart ?es;
+                    schema:hasPart ?collection_name.    
             }
             """ % (uri_s, uri_s, uri_s, uri_s)
 
@@ -487,11 +494,12 @@ def get_eb_vol_statistics(uri):
     ###### NUM ARTICLES
     query = """
           PREFIX hto: <https://w3id.org/hto#>
+          PREFIX schema: <https://schema.org/>
           SELECT (COUNT (DISTINCT ?t) as ?count)
           WHERE {
-          %s hto:hadMember ?p .
+          %s schema:hasPart ?p .
           ?p a hto:Page;
-            hto:hadMember ?t.
+            schema:hasPart ?t.
           ?t a hto:ArticleTermRecord.
          } 
          """ % (uri_s)
@@ -504,11 +512,12 @@ def get_eb_vol_statistics(uri):
     ###### NUM TOPICS
     query1 = """
               PREFIX hto: <https://w3id.org/hto#>
+              PREFIX schema: <https://schema.org/>
               SELECT (COUNT (DISTINCT ?t) as ?count)
               WHERE {
-              %s hto:hadMember ?p .
+              %s schema:hasPart ?p .
               ?p a hto:Page;
-                hto:hadMember ?t.
+                schema:hasPart ?t.
               ?t a hto:TopicTermRecord.
              } 
              """ % (uri_s)
@@ -521,14 +530,15 @@ def get_eb_vol_statistics(uri):
     ###### NUM DIST ARTICLES
     query2 = """
          PREFIX hto: <https://w3id.org/hto#>
+         PREFIX schema: <https://schema.org/>
          PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
          SELECT (count (DISTINCT ?a) as ?count)
          WHERE {
-            %s hto:hadMember ?p .
+            %s schema:hasPart ?p .
               ?p a hto:Page;
-                hto:hadMember ?t.
+                schema:hasPart ?t.
               ?t a hto:ArticleTermRecord;
-                hto:name ?a.
+                rdfs:label ?a.
         }
         """ % (uri_s)
     sparqlW.setQuery(query2)
@@ -540,14 +550,15 @@ def get_eb_vol_statistics(uri):
     ###### NUM DIST TOPICS
     query3 = """
        PREFIX hto: <https://w3id.org/hto#>
+       PREFIX schema: <https://schema.org/>
        PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
        SELECT (count (DISTINCT ?a) as ?count)
        WHERE {
-            %s hto:hadMember ?p .
+            %s schema:hasPart ?p .
               ?p a hto:Page;
-                hto:hadMember ?t.
+                schema:hasPart ?t.
               ?t a hto:TopicTermRecord;
-                hto:name ?a.
+                rdfs:label ?a.
       }
       """ % (uri_s)
     sparqlW.setQuery(query3)
@@ -604,13 +615,13 @@ def get_page_display_info(page_uri):
     hto_sparql.setReturnFormat(JSON)
     query = """
             PREFIX hto: <https://w3id.org/hto#>
-            PREFIX crm: <http://www.cidoc-crm.org/cidoc-crm/>
+            PREFIX schema: <https://schema.org/>
             PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
             SELECT * WHERE {
                 %s a hto:Page;
                     hto:number ?number.
                 OPTIONAL { %s hto:permanentURL ?permanentURL.}
-                OPTIONAL { %s crm:P138i_has_representation ?image_url.}
+                OPTIONAL { %s schema:image ?image_url.}
             }
             """ % (page_uri, page_uri, page_uri)
     # print(query)
@@ -651,12 +662,13 @@ def get_concept_external_records(concept_uri: str) -> list[dict]:
     hto_sparql.setReturnFormat(JSON)
     query = """
             PREFIX hto: <https://w3id.org/hto#>
+            PREFIX skos: <http://www.w3.org/2004/02/skos/core#>
             PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
             SELECT ?record ?type WHERE {
-                %s a hto:Concept;
-                    hto:hadConceptRecord ?record.
+                %s a skos:Concept;
+                    hto:hasConceptRecord ?record.
                 ?record a hto:ExternalRecord;
-                    hto:hasResourceType ?type.
+                    hto:hasAuthorityType ?type.
             }
     """ % formatted_concept_uri
     hto_sparql.setQuery(query)
@@ -682,23 +694,25 @@ def get_broadside_info(broadside_uri):
     hto_sparql.setReturnFormat(JSON)
     query = """
             PREFIX hto: <https://w3id.org/hto#>
+            PREFIX schema: <https://schema.org/>
+            PREFIX skos: <http://www.w3.org/2004/02/skos/core#>
             PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
             SELECT * WHERE {
                 %s a hto:Broadside;
-                    hto:name ?name;
-                    rdfs:label ?label;
+                    rdfs:label ?name;
+                    skos:altLabel ?label;
                     hto:title ?vol_title;
                     hto:startsAtPage ?start_page;
                     hto:endsAtPage ?end_page.
                 OPTIONAL {%s hto:permanentURL ?broadside_permanent_url}
                 ?series a hto:Series;
-                    hto:hadMember %s;
+                    schema:hasPart %s;
                     hto:yearPublished ?year_published;
                     hto:genre ?genre;
                     hto:printedAt ?printedAt.
                 ?printedAt rdfs:label ?print_location.
-                ?collection hto:hadMember ?series;
-                    hto:name ?collection_name.   
+                ?collection schema:hasPart ?series;
+                    rdfs:label ?collection_name.   
             }
             """ % (broadside_uri, broadside_uri, broadside_uri)
     # print(query)
@@ -741,6 +755,7 @@ def get_page_info(page_uri):
     hto_sparql.setReturnFormat(JSON)
     query = """
             PREFIX hto: <https://w3id.org/hto#>
+            PREFIX schema: <https://schema.org/>
             PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
             SELECT * WHERE {
                 %s a hto:Page;
@@ -748,17 +763,17 @@ def get_page_info(page_uri):
                 OPTIONAL {%s hto:permanentURL ?page_permanent_url}
                 ?vol a hto:Volume;
                     hto:title ?vol_title;
-                    hto:hadMember %s;
+                    schema:hasPart %s;
                     hto:permanentURL ?volume_permanent_url.
                 ?edition_or_series a ?document_type;
-                    hto:hadMember ?vol;
+                    schema:hasPart ?vol;
                     hto:yearPublished ?year_published;
                     hto:genre ?genre;
                     hto:printedAt ?printedAt.
                 FILTER (?document_type = hto:Edition || ?document_type = hto:Series)
                 ?printedAt rdfs:label ?print_location.
-                ?collection hto:hadMember ?edition_or_series;
-                    hto:name ?collection_name.   
+                ?collection schema:hasPart ?edition_or_series;
+                    rdfs:label ?collection_name.   
             }
             """ % (page_uri, page_uri, page_uri)
     # print(query)
@@ -849,15 +864,16 @@ def get_locations(location_uris):
                  PREFIX hto: <https://w3id.org/hto#>
                  PREFIX crm: <http://www.cidoc-crm.org/cidoc-crm/>
                  PREFIX geo: <http://www.opengis.net/ont/geosparql#>
+                 PREFIX crmgeo: <http://www.ics.forth.gr/isl/CRMgeo/>
                  PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
                  SELECT * WHERE {
                     VALUES ?location { 
                         %s
                     }
-                    ?location a crm:SP2_Phenomenal_Place;
+                    ?location a crmgeo:SP2_Phenomenal_Place;
                         rdfs:label ?location_name;
                         geo:hasCentroid ?centroid.
-                    ?centroid a crm:SP6_Declarative_Place;
+                    ?centroid a crmgeo:SP6_Declarative_Place;
                         geo:asGeoJSON ?geo_json.
                 }
                 """ % (locations_query_values)
@@ -923,13 +939,14 @@ def get_location_annotations(description_uri):
     query = """
              PREFIX hto: <https://w3id.org/hto#>
              PREFIX oa: <http://www.w3.org/ns/oa#>
+             PREFIX crmgeo: <http://www.ics.forth.gr/isl/CRMgeo/>
              PREFIX crm: <http://www.cidoc-crm.org/cidoc-crm/>
              SELECT ?location ?start_index ?end_index WHERE {
                 %s a hto:OriginalDescription.
                 ?annotation a oa:Annotation;
                     oa:hasBody ?location;
                     oa:hasTarget ?specific_words.
-                ?location a crm:SP2_Phenomenal_Place.
+                ?location a crmgeo:SP2_Phenomenal_Place.
                 ?specific_words oa:hasSource %s;
                     oa:hasSelector ?selector.
                 ?selector a oa:TextPositionSelector;
@@ -1064,14 +1081,15 @@ def get_location_references(record_uri):
     PREFIX geo: <http://www.opengis.net/ont/geosparql#>
     PREFIX hto: <https://w3id.org/hto#>
     PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
+    PREFIX crmgeo: <http://www.ics.forth.gr/isl/CRMgeo/>
     PREFIX crm: <http://www.cidoc-crm.org/cidoc-crm/>
     SELECT ?place ?place_name ?geo_json ?time_span_label WHERE {
       %s a hto:LocationRecord;
-        hto:refersTo ?place.
-      ?place a crm:SP2_Phenomenal_Place;
+        hto:refersToModernPlace ?place.
+      ?place a crmgeo:SP2_Phenomenal_Place;
         rdfs:label ?place_name;
         geo:hasCentroid ?centroid.
-      ?centroid a crm:SP6_Declarative_Place;
+      ?centroid a crmgeo:SP6_Declarative_Place;
         geo:asGeoJSON ?geo_json.
       ?spacetime a crm:E92_Spacetime_Volume;
         crm:P161_has_spatial_projection ?place;
@@ -1159,10 +1177,11 @@ def get_term_info(term_uri):
     hto_sparql.setReturnFormat(JSON)
     query = """
         PREFIX hto: <https://w3id.org/hto#>
+        PREFIX schema: <https://schema.org/>
         PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
         SELECT * WHERE {
             %s a ?term_type;
-                hto:name ?name;
+                rdfs:label ?name;
                 hto:startsAtPage ?start_page;
                 hto:endsAtPage ?end_page;
             OPTIONAL {%s hto:note ?note}
@@ -1173,16 +1192,16 @@ def get_term_info(term_uri):
   			OPTIONAL {?end_page hto:permanentURL ?end_page_permanent_url}
             ?vol a hto:Volume;
                 hto:title ?vol_title;
-                hto:hadMember ?start_page;
+                schema:hasPart ?start_page;
                 hto:permanentURL ?volume_permanent_url.
             ?edition a hto:Edition;
-                hto:hadMember ?vol;
+                schema:hasPart ?vol;
                 hto:yearPublished ?year_published;
                 hto:genre ?genre;
                 hto:printedAt ?printedAt.
             ?printedAt rdfs:label ?print_location.
-            ?collection hto:hadMember ?edition;
-                hto:name ?collection_name.
+            ?collection schema:hasPart ?edition;
+                rdfs:label ?collection_name.
             }
         """ % (term_uri, term_uri)
     # print(query)
@@ -1288,10 +1307,11 @@ def get_location_record_info(record_uri):
     hto_sparql.setReturnFormat(JSON)
     query = """
         PREFIX hto: <https://w3id.org/hto#>
+        PREFIX schema: <https://schema.org/>
         PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
         SELECT * WHERE {
             %s a hto:LocationRecord;
-                hto:name ?name;
+                rdfs:label ?name;
                 hto:startsAtPage ?start_page;
                 hto:endsAtPage ?end_page.
             ?start_page hto:number ?s_page_num.
@@ -1300,16 +1320,16 @@ def get_location_record_info(record_uri):
   			OPTIONAL {?end_page hto:permanentURL ?end_page_permanent_url}
             ?vol a hto:Volume;
                 hto:title ?vol_title;
-                hto:hadMember ?start_page;
+                schema:hasPart ?start_page;
                 hto:permanentURL ?volume_permanent_url.
             ?series a hto:Series;
-                hto:hadMember ?vol;
+                schema:hasPart ?vol;
                 hto:yearPublished ?year_published;
                 hto:genre ?genre;
                 hto:printedAt ?printedAt.
             ?printedAt rdfs:label ?print_location.
-            ?collection hto:hadMember ?series;
-                hto:name ?collection_name.
+            ?collection schema:hasPart?series;
+                rdfs:label ?collection_name.
             }
         """ % (record_uri)
     # print(query)
@@ -1385,8 +1405,3 @@ def get_triples(entry_uri):
     except Exception as e:
         print(e)
         return None
-
-
-if __name__ == "__main__":
-    # get volume details with edition info
-    print(get_series("Chapbooks printed in Scotland"))

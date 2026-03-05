@@ -311,9 +311,9 @@ def get_term_records_by_concept_uri():
     dbpedia_item_uri = None
 
     for item in external_items:
-        if item['type_uri'] == str(sparql_queries.hto.Wikidata_Item):
+        if item['type_uri'] == str(sparql_queries.hto.WikidataItem):
             wiki_item_uri = item['record_uri']
-        elif item['type_uri'] == str(sparql_queries.hto.Dbpedia_Item):
+        elif item['type_uri'] == str(sparql_queries.hto.DBpediaItem):
             dbpedia_item_uri = item['record_uri']
 
     wiki_item = None
