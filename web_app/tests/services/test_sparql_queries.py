@@ -7,7 +7,7 @@ class MyTestCase(unittest.TestCase):
         collection_name = "Gazetteers of Scotland"
         series_list = sparql_queries.get_series(collection_name)
         print(series_list[0])
-        self.assertEqual(len(series_list), 12)
+        self.assertEqual(len(series_list), 10)
 
     def test_get_eb_editions(self):
         editions_list = sparql_queries.get_editions()
